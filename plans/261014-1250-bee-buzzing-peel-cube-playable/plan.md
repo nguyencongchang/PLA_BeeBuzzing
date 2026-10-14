@@ -1,6 +1,6 @@
 ---
 title: Bee Buzzing — Peel the Cube Playable (Cocos 3.8.7)
-status: draft
+status: done
 created: 2026-10-14
 branch: main
 deadline: 4 ngày kể từ khi nhận test (iKame Technical Test V4.0)
@@ -51,11 +51,11 @@ Flow: `tap hive → HiveBoard.moveToSlot → fire tick → TargetSelector(reacha
 ## Phases (4 ngày)
 | # | Phase | Ngày | Effort | Depends | Status |
 |---|---|---|---|---|---|
-| 1 | [Setup + level data + domain core + tests](phase-01-setup-level-domain-core.md) | D1 | M | – | pending |
-| 2 | [Sculpture render + rotation + hive board](phase-02-sculpture-render-hive-board.md) | D2 | M | 1 | pending |
-| 3 | [Bee swarm, firing loop, win/lose, X2](phase-03-bee-swarm-gameplay-loop.md) | D3 | M | 2 | pending |
-| 4 | [Game feel, UI/UX, tutorial, end card](phase-04-game-feel-ui-tutorial.md) | D4 sáng | S | 3 | pending |
-| 5 | [Build, size optimization, write-up, submit](phase-05-build-optimize-submit.md) | D4 chiều | S | 4 | pending |
+| 1 | [Setup + level data + domain core + tests](phase-01-setup-level-domain-core.md) | D1 | M | – | done |
+| 2 | [Sculpture render + rotation + hive board](phase-02-sculpture-render-hive-board.md) | D2 | M | 1 | done |
+| 3 | [Bee swarm, firing loop, win/lose, X2](phase-03-bee-swarm-gameplay-loop.md) | D3 | M | 2 | done |
+| 4 | [Game feel, UI/UX, tutorial, end card](phase-04-game-feel-ui-tutorial.md) | D4 sáng | S | 3 | done |
+| 5 | [Build, size optimization, write-up, submit](phase-05-build-optimize-submit.md) | D4 chiều | S | 4 | done |
 
 Critical path: 1 → 2 → 3 → 5. Phase 4 cắt được nếu trễ (logic đúng là bắt buộc, game feel là điểm cộng).
 
