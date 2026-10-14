@@ -6,7 +6,7 @@ const WING_HINGE_X = 0.18;
 const WING_HINGE_Y = 0.45;
 /** Desired world sizes (cell size is 0.2). */
 const BEE_LENGTH = 0.36;
-const HIVE_WIDTH = 0.92;
+const HIVE_WIDTH = 0.88;
 const BEE_MESH_LENGTH = 1.24;
 const HIVE_MESH_WIDTH = 2.14;
 const CUBE_MESH_SIZE = 1.05;

@@ -1,4 +1,4 @@
-import { _decorator, Camera, Color, Component, Label, Layers, math, Node, Quat, TTFFont, tween, Tween, UITransform, Vec3 } from 'cc';
+import { _decorator, Camera, Color, Component, Label, Layers, math, Node, Quat, TTFFont, tween, Tween, UIOpacity, UITransform, Vec3 } from 'cc';
 import { HiveBoard, HiveState } from '../../domain/HiveBoard';
 import { ModelKit } from '../rendering/ModelKit';
 import { BOARD_LAYOUT, queuePosition, slotPosition } from './BoardLayout';
@@ -11,6 +11,8 @@ const ADVANCE_DURATION = 0.22;
 const LABEL_FONT_SIZE = 40;
 /** Bees leave from the top-front of the hive. */
 const LAUNCH_OFFSET = new Vec3(0, 0.15, 0.6);
+/** Ammo numbers of hives waiting behind the front row are faded, as in the reference. */
+const REAR_LABEL_OPACITY = 110;
 /** Hives face the camera, tilted a little further so they read as seen from below (reference). */
 const FACE_TILT = new Quat();
 Quat.fromAxisAngle(FACE_TILT, Vec3.UNIT_X, math.toRadian(-6));
@@ -56,6 +58,7 @@ export class HiveBoardView extends Component {
     onHiveActivated(hive: HiveState, slot: number): void {
         const view = this.views.get(hive.spec.id)!;
         this.kit.paintHive(view.node, hive.spec.color, false);
+        view.label.getComponent(UIOpacity)!.opacity = 255;
         const from = view.node.position.clone();
         const to = slotPosition(slot, this.board.slotCount, new Vec3());
         const proxy = { t: 0 };
@@ -125,8 +128,8 @@ export class HiveBoardView extends Component {
                 view.shownAmmo = view.hive.ammo;
                 view.label.string = `${view.hive.ammo}`;
             }
-            Vec3.add(this.tmp, view.node.worldPosition, LAUNCH_OFFSET);
-            this.camera.convertToUINode(this.tmp, view.label.node.parent!, this.tmpUi);
+            // The hive faces the camera, so its pivot projects onto the center of its front face.
+            this.camera.convertToUINode(view.node.worldPosition, view.label.node.parent!, this.tmpUi);
             view.label.node.setPosition(this.tmpUi);
         });
     }
@@ -146,6 +149,7 @@ export class HiveBoardView extends Component {
             const pos = queuePosition(line, this.board.lineCount, index, new Vec3());
             const scale = index < BOARD_LAYOUT.visibleQueue ? 1 : 0;
             this.kit.paintHive(view.node, hive.spec.color, index > 0);
+            view.label.getComponent(UIOpacity)!.opacity = index > 0 ? REAR_LABEL_OPACITY : 255;
             if (animate) {
                 tween(view.node).to(ADVANCE_DURATION, { position: pos, scale: new Vec3(scale, scale, scale) }, { easing: 'quadOut' }).start();
             } else {
@@ -160,6 +164,7 @@ export class HiveBoardView extends Component {
         node.layer = Layers.Enum.UI_2D;
         node.addComponent(UITransform);
         node.setParent(parent);
+        node.addComponent(UIOpacity);
         const label = node.addComponent(Label);
         if (font) {
             label.useSystemFont = false;

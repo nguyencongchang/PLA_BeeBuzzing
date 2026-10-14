@@ -17,8 +17,8 @@ export const BOARD_LAYOUT = {
     /** Separator line between the play area and the hive queue panel. */
     separatorY: -3.02,
     lineSpacing: 1.2,
-    lineFrontY: -3.6,
-    lineStep: 1.0,
+    lineFrontY: -3.5,
+    lineStep: 1.1,
     /** Queue entries drawn per line; deeper hives wait hidden behind the last one. */
     visibleQueue: 3,
     /** Half-extent of the play field the camera must always fit (world units). */

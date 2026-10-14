@@ -19,7 +19,7 @@ const CUBE_TRAIL_CELLS = 0.8;
 const FLAP_SPEED = 48;
 const FLAP_ANGLE = 42;
 /** Keeps flight readable even if a remote parameter payload contains an older speed. */
-const MAX_BEE_FLIGHT_SPEED = 4;
+const MAX_BEE_FLIGHT_SPEED = 3;
 /** Fraction of the home flight spent shrinking into the hive entrance. */
 const ENTER_FRACTION = 0.22;
 const ENTER_SCALE = 0.25;
