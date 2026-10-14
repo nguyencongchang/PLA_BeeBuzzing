@@ -68,6 +68,10 @@ if [[ ! -d "${BUILD_PATH}" ]]; then
     exit 3
 fi
 
+# super-html always obfuscates inside the editor hook; obfuscation made the gameplay hot
+# loops ~70x slower, so re-pack without it (set SUPER_HTML_OBFUSCATE=true to keep it).
+node "${REPOSITORY_ROOT}/ci/repack-super-html.cjs" "${PROJECT_PATH}"
+
 if [[ ! -d "${SUPER_HTML_BUILD_PATH}" ]]; then
     echo "super-html output directory was not created: ${SUPER_HTML_BUILD_PATH}" >&2
     exit 3

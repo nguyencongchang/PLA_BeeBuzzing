@@ -12,7 +12,7 @@
   "sourceMaps": false,
   "overwriteProjectSettings": {
     "includeModules": {
-      "gfx-webgl2": "on",
+      "gfx-webgl2": "inherit-project-setting",
       "physics": "inherit-project-setting",
       "physics-2d": "inherit-project-setting"
     },
