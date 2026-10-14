@@ -12,7 +12,9 @@ const HIVE_MESH_WIDTH = 2.14;
 const CUBE_MESH_SIZE = 1.05;
 
 const WING_HEX = '#FFFFFFB0';
-const STREAK_HEX = '#FFFFFFE6';
+/** Layered pull trail: a wide pink bloom behind a small hot-white centre, like the reference. */
+const STREAK_GLOW_HEX = '#FFB6ED50';
+const STREAK_CORE_HEX = '#FFF8FFFA';
 /** Queue hives behind the front one are drawn darker, as in the reference. */
 const QUEUED_HIVE_SHADE = 0.55;
 /** Soft shadow: translucent dark copy offset up-left behind the hive (as in the reference). */
@@ -125,11 +127,27 @@ export class ModelKit {
         renderer.setSharedMaterial(this.materials.toonGameColor(color, dimmed ? QUEUED_HIVE_SHADE : 1), 0);
     }
 
-    /** Unit white light streak (stretched along Z by CubeStreak). */
+    /**
+     * Unit pull trail (stretched along Z by CubeStreak).
+     *
+     * Two nested meshes make the mark read as light instead of a solid white box: a soft
+     * pink outer glow and a short, bright centre line.  They share one transform so the
+     * pooled animation only has to update one node per flying cube.
+     */
     createStreak(): Node {
         this.streakMesh ??= utils.MeshUtils.createMesh(primitives.box({ width: 1, height: 1, length: 1 }));
         const node = new Node('CubeStreak');
-        addRenderer(node, this.streakMesh).setSharedMaterial(this.materials.solid(STREAK_HEX, { transparent: true }), 0);
+
+        const glow = new Node('Glow');
+        glow.setParent(node);
+        // Make the glow fuller around the core without changing the trail's measured length.
+        glow.setScale(1.8, 1.8, 1);
+        addRenderer(glow, this.streakMesh).setSharedMaterial(this.materials.solid(STREAK_GLOW_HEX, { transparent: true }), 0);
+
+        const core = new Node('Core');
+        core.setParent(node);
+        core.setScale(0.62, 0.62, 1.02);
+        addRenderer(core, this.streakMesh).setSharedMaterial(this.materials.solid(STREAK_CORE_HEX, { transparent: true }), 0);
         return node;
     }
 

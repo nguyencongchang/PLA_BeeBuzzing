@@ -1,21 +1,28 @@
 import { Node, Quat, Vec3 } from 'cc';
 
-/** Streak lifetime after the cube leaves its socket, and its starting thickness (world units). */
-const STREAK_LIFE = 0.3;
-const STREAK_WIDTH = 0.04;
+/**
+ * The reference keeps the light attached while the cube clears its cell, then lets its tail
+ * melt away instead of disappearing on the next frame.  The actual pink bloom is created by
+ * ModelKit; this width controls its bright white core.
+ */
+const STREAK_LIFE = 0.16;
+const STREAK_WIDTH = 0.035;
 /** How fast the streak's tail catches up with the cube once it is out (per second). */
-const STREAK_CATCH_UP = 9;
+const STREAK_CATCH_UP = 32;
+/** Never allow the afterglow to turn into a long spear behind a fast-moving cube. */
+const MAX_STREAK_LENGTH = 0.085;
 /** Carried cubes tumble slowly, as in the reference. */
 const TUMBLE_DEG_PER_SEC = 150;
 const TUMBLE_AXIS = new Vec3(0.8, 0.5, 0.3).normalize();
 
 const mid = new Vec3();
+const tailDirection = new Vec3();
 const spin = new Quat();
 
 /**
- * White light streak left behind a cube pulled out of the sculpture (reference): it grows
- * from the socket to the cube during the pull, then its tail chases the cube while it thins
- * out. `node` is a unit box (ModelKit.createStreak) stretched along its Z axis.
+ * Light streak left behind a cube pulled out of the sculpture: it grows from the socket to
+ * the cube during the pull, then its tail chases the cube while its pink bloom fades. `node`
+ * contains the glow and the white centre line, and is stretched along its Z axis.
  */
 export class CubeStreak {
     private readonly tail = new Vec3();
@@ -24,6 +31,11 @@ export class CubeStreak {
 
     constructor(readonly node: Node) {
         node.active = false;
+    }
+
+    /** True only after the cube has cleared the face and the visible trail has started. */
+    get active(): boolean {
+        return this.age >= 0;
     }
 
     /** The cube starts leaving its socket at world position `socket`. */
@@ -47,8 +59,18 @@ export class CubeStreak {
             this.age += dt;
             Vec3.lerp(this.tail, this.tail, head, Math.min(1, dt * STREAK_CATCH_UP));
         }
-        const width = STREAK_WIDTH * Math.max(0, 1 - this.age / STREAK_LIFE);
-        const length = Vec3.distance(this.tail, head);
+        // Ease the fade so the glow holds briefly after the cube breaks free, then contracts.
+        const fade = Math.max(0, 1 - this.age / STREAK_LIFE);
+        const width = STREAK_WIDTH * fade * fade;
+        let length = Vec3.distance(this.tail, head);
+        // The original effect only leaves a small bloom immediately behind the cube.  Clamp
+        // the tail to that tiny distance so a frame hitch or a fast path can never draw a
+        // long line back into / through the sculpture.
+        if (length > MAX_STREAK_LENGTH) {
+            Vec3.subtract(tailDirection, this.tail, head).normalize();
+            Vec3.scaleAndAdd(this.tail, head, tailDirection, MAX_STREAK_LENGTH);
+            length = MAX_STREAK_LENGTH;
+        }
         if (width <= 0.002 || (this.released && length < 0.01)) {
             this.stop();
             return;

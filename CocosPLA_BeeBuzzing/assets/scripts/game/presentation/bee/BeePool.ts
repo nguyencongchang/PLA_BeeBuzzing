@@ -97,15 +97,51 @@ export class BeePool {
 
 /** Places a bee at `pos` (adds a slight bob), flaps its wings and turns its head along the motion. */
 export function poseBee(bee: Bee, pos: Vec3, dt: number): void {
-    bee.flap += dt * FLAP_SPEED;
-    const angle = Math.sin(bee.flap) * FLAP_ANGLE;
-    bee.parts.wingL.setRotationFromEuler(0, 0, angle);
-    bee.parts.wingR.setRotationFromEuler(0, 0, -angle);
+    flapWings(bee, dt);
     pos.y += Math.sin(bee.flap * 0.21) * 0.025;
 
     const root = bee.parts.root;
     root.setWorldPosition(pos);
     Vec3.subtract(tmpHeading, pos, bee.prev);
     if (tmpHeading.lengthSqr() > 1e-8) root.lookAt(Vec3.add(tmpHeading, pos, tmpHeading));
+    bee.prev.set(pos);
+}
+
+function flapWings(bee: Bee, dt: number): void {
+    bee.flap += dt * FLAP_SPEED;
+    const angle = Math.sin(bee.flap) * FLAP_ANGLE;
+    bee.parts.wingL.setRotationFromEuler(0, 0, angle);
+    bee.parts.wingR.setRotationFromEuler(0, 0, -angle);
+}
+
+/** How fast a landing bee turns into its clinging pose (per second). */
+const CLING_TURN_RATE = 18;
+const clingUp = new Vec3();
+const clingView = new Vec3();
+const clingRot = new Quat();
+const blendRot = new Quat();
+
+/**
+ * Bee clinging to a cube face (reference): belly on the face (the model's origin is its belly),
+ * back along the face normal, head pointing up the face; wings keep flapping. Blends in
+ * smoothly from the flying pose.
+ */
+export function clingBee(bee: Bee, pos: Vec3, normal: Vec3, dt: number): void {
+    flapWings(bee, dt);
+    // Head direction: world up projected onto the face (fall back to "away" for top/bottom faces).
+    clingUp.set(0, 1, 0);
+    Vec3.scaleAndAdd(clingUp, clingUp, normal, -Vec3.dot(clingUp, normal));
+    if (clingUp.lengthSqr() < 0.01) {
+        clingUp.set(0, 0, -1);
+        Vec3.scaleAndAdd(clingUp, clingUp, normal, -Vec3.dot(clingUp, normal));
+    }
+    clingUp.normalize();
+    // Node -Z is the head, so the view vector (+Z) points down the face; +Y is the back.
+    Vec3.negate(clingView, clingUp);
+    Quat.fromViewUp(clingRot, clingView, normal);
+    const root = bee.parts.root;
+    Quat.slerp(blendRot, root.worldRotation, clingRot, Math.min(1, dt * CLING_TURN_RATE));
+    root.setWorldRotation(blendRot);
+    root.setWorldPosition(pos);
     bee.prev.set(pos);
 }

@@ -2,8 +2,9 @@ import { _decorator, Component, math, Vec3 } from 'cc';
 import { GameTime } from '../../application/GameTime';
 import { ModelKit } from '../rendering/ModelKit';
 import { SculptureView } from '../sculpture/SculptureView';
-import { bezier, buildApproachPath, homeArc } from './BeeFlightPath';
-import { Bee, BeePool, poseBee } from './BeePool';
+import { buildApproachPath } from './BeeFlightPath';
+import { startHomeFlight, stepHomeFlight } from './BeeHomeFlight';
+import { Bee, BeePool, clingBee, poseBee } from './BeePool';
 import { tumble } from './BeeEffects';
 
 const { ccclass } = _decorator;
@@ -13,7 +14,8 @@ const APPROACH = 0, GRAB = 1, PULL = 2, CARRY = 3, LEAVE = 4;
 /** Bees perch on the cube for a moment before pulling it out (reference). */
 const PERCH_TIME = 0.35;
 const PERCH_WIGGLE = 0.02;
-const PULL_TIME = 0.14;
+/** A readable pull gives the socket-to-cube light trail time to bloom. */
+const PULL_TIME = 0.22;
 /** Bees pop out of the hive small and reach full size after this distance (world units). */
 const EMERGE_DISTANCE = 0.45;
 const EMERGE_MIN_SCALE = 0.3;
@@ -21,14 +23,15 @@ const EMERGE_MIN_SCALE = 0.3;
 const EXIT_RUNWAY_CELLS = 3;
 /** Bee hovers this far (cells) in front of the cube face it grabs. */
 const FACE_HOVER_CELLS = 0.75;
+/** Clinging bee: its belly (model origin) rests just on the cube face (cells from the cube center). */
+const CLING_CELLS = 0.52;
+/** Centre-to-face distance of one cube. Never draw the pull trail behind this plane. */
+const CUBE_FACE_CELLS = 0.5;
+/** Start the shine just after the carried cube has cleared the exposed face. */
+const STREAK_START_CELLS = 0.52;
 const CUBE_TRAIL_CELLS = 0.8;
 /** Keeps flight readable even if a remote parameter payload contains an older speed. */
 const MAX_BEE_FLIGHT_SPEED = 3;
-/** Fraction of the home flight spent shrinking as the bee disappears inside the hive. */
-const ENTER_FRACTION = 0.15;
-const ENTER_SCALE = 0.7;
-/** How far past the entrance (world units, upward) bees fly: inside, behind the front layer. */
-const ENTER_DEPTH = 0.35;
 /** Fallback hive entrance (swarm-local) when no backdrop provides one. */
 const DEFAULT_HIVE = new Vec3(0, 6.2, 0);
 
@@ -128,8 +131,8 @@ export class BeeSwarm extends Component {
                 if (bee.s >= bee.leadLength + bee.path.length) this.enter(bee, GRAB);
                 break;
             }
-            case GRAB: { // perched on the cube face, wiggling, then pulls
-                bee.path.pointWorld(bee.path.pointCount - 1, world, this.pos);
+            case GRAB: { // clinging on the cube face, wiggling, then pulls
+                this.localToWorld(bee.center, bee.faceDir, CLING_CELLS * cell, this.pos);
                 this.pos.x += Math.sin(bee.timer * 40) * PERCH_WIGGLE;
                 const punch = 1 + 0.3 * Math.sin(Math.min(1, bee.timer / 0.1) * Math.PI);
                 bee.parts.root.setScale(punch, punch, punch);
@@ -137,7 +140,6 @@ export class BeeSwarm extends Component {
                     this.pending--;
                     this.localToWorld(bee.center, bee.faceDir, 0, this.tmp);
                     bee.cube = this.pool.acquireCube(bee.color, this.tmp, this.sculpture.node.worldRotation);
-                    bee.streak.start(this.tmp);
                     this.onGrab(bee.target);
                     this.enter(bee, PULL);
                 }
@@ -145,12 +147,21 @@ export class BeeSwarm extends Component {
             }
             case PULL: {
                 const t = math.clamp01(bee.timer / PULL_TIME);
-                this.localToWorld(bee.center, bee.faceDir, FACE_HOVER_CELLS * cell * t, this.tmp);
+                const pullDistance = FACE_HOVER_CELLS * cell * t;
+                this.localToWorld(bee.center, bee.faceDir, pullDistance, this.tmp);
                 bee.cube!.setWorldPosition(this.tmp);
-                bee.streak.update(this.tmp, dt);
-                this.localToWorld(bee.center, bee.faceDir, (FACE_HOVER_CELLS + 0.3 * t) * cell, this.pos);
+                // Trail only once the cube clears its cell, starting at the exposed face (never through the model).
+                if (pullDistance >= STREAK_START_CELLS * cell) {
+                    if (!bee.streak.active) {
+                        this.localToWorld(bee.center, bee.faceDir, CUBE_FACE_CELLS * cell, this.pos);
+                        bee.streak.start(this.pos);
+                    }
+                    bee.streak.update(this.tmp, dt);
+                }
+                // Still clinging: the bee rides out on the cube it pulls.
+                this.localToWorld(bee.center, bee.faceDir, pullDistance + CLING_CELLS * cell, this.pos);
                 if (t >= 1) {
-                    bee.streak.release();
+                    if (bee.streak.active) bee.streak.release();
                     bee.s = bee.path.length;
                     this.enter(bee, CARRY);
                 }
@@ -161,41 +172,22 @@ export class BeeSwarm extends Component {
                 bee.path.sampleWorld(bee.s, world, this.pos);
                 bee.path.sampleWorld(bee.s + CUBE_TRAIL_CELLS * cell * bee.path.unitScale, world, this.tmp);
                 bee.cube!.setWorldPosition(this.tmp);
-                bee.streak.update(this.tmp, dt);
+                if (bee.streak.active) bee.streak.update(this.tmp, dt);
                 tumble(bee.cube!, dt);
-                if (bee.s <= 0) this.startHomeFlight(bee);
+                if (bee.s <= 0) { startHomeFlight(bee, this.pos, this.hiveEntrance); this.enter(bee, LEAVE); }
                 break;
             }
-            case LEAVE: {
-                // Fly home carrying the cube, up through the entrance into the hive (the front
-                // hive layer hides it once inside), shrinking slightly at the very end.
-                const t = math.clamp01((bee.timer * speed) / bee.s);
-                bezier(this.pos, bee.leaveFrom, bee.leaveCtrl, bee.leaveTo, t * (2 - t));
-                const k = t < 1 - ENTER_FRACTION ? 1 : math.lerp(1, ENTER_SCALE, (t - 1 + ENTER_FRACTION) / ENTER_FRACTION);
-                bee.parts.root.setScale(k, k, k);
-                Vec3.scaleAndAdd(this.tmp, this.pos, Vec3.UNIT_Y, -0.14 * k);
-                bee.cube!.setWorldPosition(this.tmp);
-                bee.cube!.setScale(this.pool.cubeScale * k, this.pool.cubeScale * k, this.pool.cubeScale * k);
-                tumble(bee.cube!, dt);
-                if (t >= 1) {
-                    this.onHome();
-                    return true;
-                }
+            case LEAVE:
+                if (stepHomeFlight(bee, speed, dt, this.pool.cubeScale, this.pos)) { this.onHome(); return true; }
                 break;
-            }
         }
 
-        poseBee(bee, this.pos, dt);
-        // Perched bees face the cube they hold instead of their (wiggling) motion.
-        if (bee.phase === GRAB) bee.parts.root.lookAt(this.localToWorld(bee.center, bee.faceDir, 0, this.tmp));
+        if (bee.phase === GRAB || bee.phase === PULL) {
+            clingBee(bee, this.pos, Vec3.transformQuat(this.tmp, bee.faceDir, this.sculpture.node.worldRotation), dt);
+        } else {
+            poseBee(bee, this.pos, dt);
+        }
         return false;
-    }
-
-    private startHomeFlight(bee: Bee): void {
-        bee.leaveFrom.set(this.pos);
-        this.hiveEntrance(bee.leaveTo).y += ENTER_DEPTH;
-        bee.s = homeArc(bee.leaveFrom, bee.leaveTo, bee.leaveCtrl);
-        this.enter(bee, LEAVE);
     }
 
     private enter(bee: Bee, phase: number): void {
