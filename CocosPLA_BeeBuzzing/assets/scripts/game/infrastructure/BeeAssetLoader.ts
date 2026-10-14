@@ -13,8 +13,7 @@ const modelPaths = (name: string) => [`bee/models/${name}/${name}`, `bee/models/
 export interface BackdropSprites {
     readonly tile: SpriteFrame;
     readonly leaves: SpriteFrame;
-    readonly hiveA: SpriteFrame;
-    readonly hiveB: SpriteFrame;
+    readonly hive: SpriteFrame;
     readonly slot: SpriteFrame;
 }
 
@@ -38,10 +37,10 @@ function optional<T>(what: string, promise: Promise<T>): Promise<T | null> {
 }
 
 async function loadBackdropSprites(): Promise<BackdropSprites> {
-    const [tile, leaves, hiveA, hiveB, slot] = await Promise.all(
-        ['dark-bg', 'leaf-border', 'hive-hanging-a', 'hive-hanging-b', 'slot'].map((n) => loadSpriteFrame(`${SPRITES}/${n}`)),
+    const [tile, leaves, hive, slot] = await Promise.all(
+        ['dark-bg', 'leaf-border', 'hive-hanging', 'slot'].map((n) => loadSpriteFrame(`${SPRITES}/${n}`)),
     );
-    return { tile, leaves, hiveA, hiveB, slot };
+    return { tile, leaves, hive, slot };
 }
 
 /** Loads everything the level needs from `resources/bee` in parallel. Required assets throw. */

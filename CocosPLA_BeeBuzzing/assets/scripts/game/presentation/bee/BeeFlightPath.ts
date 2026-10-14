@@ -6,15 +6,19 @@ const tmpB = new Vec3();
 /**
  * A polyline in sculpture-local space evaluated through the sculpture's *current*
  * world matrix, so bees keep tracking their cube while the model rotates.
- * Distances are rigid-invariant, so lengths computed once at launch stay valid.
+ * Lengths / sample distances are in world units via `unitScale` (the sculpture's
+ * uniform world scale), so they stay valid under rotation.
  */
 export class BeeFlightPath {
     /** Flat local xyz. */
     readonly points: number[] = [];
     readonly cumulative: number[] = [];
+    /** World units per local unit. */
+    unitScale = 1;
 
+    /** Total length in world units. */
     get length(): number {
-        return this.cumulative.length ? this.cumulative[this.cumulative.length - 1] : 0;
+        return this.cumulative.length ? this.cumulative[this.cumulative.length - 1] * this.unitScale : 0;
     }
 
     get pointCount(): number {
@@ -37,8 +41,9 @@ export class BeeFlightPath {
         this.cumulative.push(acc);
     }
 
-    /** World position at distance s (clamped) along the path. */
-    sampleWorld(s: number, world: Mat4, out: Vec3): Vec3 {
+    /** World position at world distance s (clamped) along the path. */
+    sampleWorld(worldS: number, world: Mat4, out: Vec3): Vec3 {
+        const s = worldS / this.unitScale;
         const n = this.pointCount;
         if (n === 0) return out.set(0, 0, 0);
         const c = this.cumulative;
@@ -100,4 +105,47 @@ export function buildApproachPath(
     const c = space.cellToLocalArray(route[0], route[1], route[2], tmpArr);
     outCenter.set(c[0], c[1], c[2]);
     outFaceDir.set(fx, fy, -fz); // grid Z is mirrored in local space
+}
+
+/** Point on a quadratic Bezier. */
+export function bezier(out: Vec3, a: Vec3, c: Vec3, b: Vec3, t: number): Vec3 {
+    const u = 1 - t;
+    return out.set(
+        u * u * a.x + 2 * u * t * c.x + t * t * b.x,
+        u * u * a.y + 2 * u * t * c.y + t * t * b.y,
+        u * u * a.z + 2 * u * t * c.z + t * t * b.z,
+    );
+}
+
+/** Cheap quadratic Bezier length estimate (mean of chord and control polygon). */
+export function bezierLength(a: Vec3, c: Vec3, b: Vec3): number {
+    return (Vec3.distance(a, b) + Vec3.distance(a, c) + Vec3.distance(c, b)) / 2;
+}
+
+/** Sideways bulge / lift (world units) of the slot → sculpture arc, so streams fan out like a fountain. */
+const ARC_BULGE = 1.7;
+const ARC_LIFT = 0.8;
+/** Bulge of the sculpture → hive flight. */
+const HOME_BULGE = 1.1;
+const HOME_LIFT = 0.5;
+
+/**
+ * Control point of the slot → path-start arc: out sideways (away from the sculpture's
+ * center line) and up, then curving in. Returns the arc length estimate.
+ */
+export function launchArc(from: Vec3, to: Vec3, center: Vec3, outCtrl: Vec3): number {
+    const side = Math.abs(from.x - center.x) > 0.3 ? Math.sign(from.x - center.x) : Math.sign(to.x - center.x) || 1;
+    Vec3.lerp(outCtrl, from, to, 0.35);
+    outCtrl.x += side * ARC_BULGE;
+    outCtrl.y += ARC_LIFT;
+    return bezierLength(from, outCtrl, to);
+}
+
+/** Control point of the flight home to the hive entrance. Returns the arc length estimate. */
+export function homeArc(from: Vec3, to: Vec3, outCtrl: Vec3): number {
+    const side = Math.sign(from.x - to.x) || 1;
+    Vec3.lerp(outCtrl, from, to, 0.5);
+    outCtrl.x += side * HOME_BULGE;
+    outCtrl.y += HOME_LIFT;
+    return bezierLength(from, outCtrl, to);
 }

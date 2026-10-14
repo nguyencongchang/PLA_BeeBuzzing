@@ -8,8 +8,10 @@ import { drawRoundRect, uiLabel, uiNode } from './HudWidgets';
 
 const { ccclass } = _decorator;
 
-const BAR_W = 560;
-const BAR_H = 38;
+/** Progress pill sits on the hanging hive's body (the hive "fills" as cubes come home). */
+const BAR_W = 250;
+const BAR_H = 34;
+const BAR_TOP = 240;
 const HONEY = new Color(255, 196, 40, 255);
 const BAR_BG = new Color(40, 28, 20, 200);
 
@@ -63,10 +65,10 @@ export class GameHud extends Component {
         const bar = uiNode('Progress', this.node, BAR_W, BAR_H);
         const w = bar.addComponent(Widget);
         w.isAlignTop = true;
-        w.top = 70;
+        w.top = BAR_TOP;
         drawRoundRect(bar.addComponent(Graphics), BAR_W + 10, BAR_H + 10, (BAR_H + 10) / 2, BAR_BG);
         this.fill = uiNode('Fill', bar, BAR_W, BAR_H).addComponent(Graphics);
-        this.percent = uiLabel(bar, '0%', 30, font);
+        this.percent = uiLabel(bar, '0%', 26, font);
         this.redrawFill();
     }
 

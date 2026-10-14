@@ -2,7 +2,7 @@ import { _decorator, Component, math, Vec3 } from 'cc';
 import { GameTime } from '../../application/GameTime';
 import { ModelKit } from '../rendering/ModelKit';
 import { SculptureView } from '../sculpture/SculptureView';
-import { buildApproachPath } from './BeeFlightPath';
+import { bezier, buildApproachPath, homeArc, launchArc } from './BeeFlightPath';
 import { Bee, BeePool } from './BeePool';
 
 const { ccclass } = _decorator;
@@ -18,6 +18,11 @@ const FACE_HOVER_CELLS = 0.75;
 const CUBE_TRAIL_CELLS = 0.8;
 const FLAP_SPEED = 48;
 const FLAP_ANGLE = 42;
+/** Fraction of the home flight spent shrinking into the hive entrance. */
+const ENTER_FRACTION = 0.22;
+const ENTER_SCALE = 0.25;
+/** Fallback hive entrance (swarm-local) when no backdrop provides one. */
+const DEFAULT_HIVE = new Vec3(0, 6.2, 0);
 
 export interface LaunchRequest {
     readonly color: number;
@@ -34,6 +39,8 @@ export interface LaunchRequest {
 @ccclass('BeeSwarm')
 export class BeeSwarm extends Component {
     onGrab: (target: number) => void = () => undefined;
+    /** World position of the hive entrance bees carry cubes into (set by the backdrop). */
+    hiveEntrance: (out: Vec3) => Vec3 = (out) => Vec3.transformMat4(out, DEFAULT_HIVE, this.node.worldMatrix);
     beeSpeed = 16;
 
     private sculpture: SculptureView = null!;
@@ -45,7 +52,8 @@ export class BeeSwarm extends Component {
 
     init(kit: ModelKit, sculpture: SculptureView): void {
         this.sculpture = sculpture;
-        this.pool = new BeePool(kit, this.node, sculpture.gridSpace.cellSize);
+        // Carried cubes match the on-screen cube size (sculpture may be scaled).
+        this.pool = new BeePool(kit, this.node, sculpture.gridSpace.cellSize * sculpture.node.scale.x);
     }
 
     /** Bees in flight (including those flying away). */
@@ -61,12 +69,14 @@ export class BeeSwarm extends Component {
     launch(req: LaunchRequest): void {
         const bee = this.pool.acquireBee(req.color);
         buildApproachPath(bee.path, req.gridPath, this.sculpture.gridSpace, EXIT_RUNWAY_CELLS, FACE_HOVER_CELLS, bee.center, bee.faceDir);
+        bee.path.unitScale = this.sculpture.node.worldScale.x;
         bee.target = req.target;
         bee.phase = APPROACH;
         bee.s = 0;
         bee.timer = 0;
         bee.start.set(req.from);
-        bee.leadLength = Vec3.distance(req.from, bee.path.pointWorld(0, this.sculpture.node.worldMatrix, this.tmp));
+        const pathStart = bee.path.pointWorld(0, this.sculpture.node.worldMatrix, this.tmp);
+        bee.leadLength = launchArc(req.from, pathStart, this.sculpture.node.worldPosition, bee.arcCtrl);
         bee.prev.set(req.from);
         bee.parts.root.setWorldPosition(req.from);
         bee.parts.root.setScale(1, 1, 1);
@@ -98,7 +108,7 @@ export class BeeSwarm extends Component {
                 bee.s += speed * dt;
                 if (bee.s < bee.leadLength) {
                     bee.path.pointWorld(0, world, this.tmp);
-                    Vec3.lerp(this.pos, bee.start, this.tmp, bee.s / bee.leadLength);
+                    bezier(this.pos, bee.start, bee.arcCtrl, this.tmp, bee.s / bee.leadLength);
                 } else {
                     bee.path.sampleWorld(bee.s - bee.leadLength, world, this.pos);
                 }
@@ -132,22 +142,20 @@ export class BeeSwarm extends Component {
             case CARRY: {
                 bee.s -= speed * dt;
                 bee.path.sampleWorld(bee.s, world, this.pos);
-                bee.path.sampleWorld(bee.s + CUBE_TRAIL_CELLS * cell, world, this.tmp);
+                bee.path.sampleWorld(bee.s + CUBE_TRAIL_CELLS * cell * bee.path.unitScale, world, this.tmp);
                 bee.cube!.setWorldPosition(this.tmp);
-                if (bee.s <= 0) {
-                    bee.leaveFrom.set(this.pos);
-                    const side = this.pos.x >= 0 ? 1 : -1;
-                    bee.leaveTo.set(side * (5 + Math.random() * 2.5), 7.5 + Math.random() * 2, 1 + Math.random());
-                    bee.s = Vec3.distance(bee.leaveFrom, bee.leaveTo);
-                    this.enter(bee, LEAVE);
-                }
+                if (bee.s <= 0) this.startHomeFlight(bee);
                 break;
             }
             case LEAVE: {
-                const t = math.clamp01((bee.timer * speed * 1.15) / bee.s);
-                Vec3.lerp(this.pos, bee.leaveFrom, bee.leaveTo, t * t);
-                Vec3.scaleAndAdd(this.tmp, this.pos, Vec3.UNIT_Y, -0.12);
+                // Fly home to the hive carrying the cube, shrinking into the entrance at the end.
+                const t = math.clamp01((bee.timer * speed) / bee.s);
+                bezier(this.pos, bee.leaveFrom, bee.leaveCtrl, bee.leaveTo, t * (2 - t));
+                const k = t < 1 - ENTER_FRACTION ? 1 : math.lerp(1, ENTER_SCALE, (t - 1 + ENTER_FRACTION) / ENTER_FRACTION);
+                bee.parts.root.setScale(k, k, k);
+                Vec3.scaleAndAdd(this.tmp, this.pos, Vec3.UNIT_Y, -0.14 * k);
                 bee.cube!.setWorldPosition(this.tmp);
+                bee.cube!.setScale(this.pool.cubeScale * k, this.pool.cubeScale * k, this.pool.cubeScale * k);
                 if (t >= 1) return true;
                 break;
             }
@@ -155,6 +163,12 @@ export class BeeSwarm extends Component {
 
         this.animate(bee, dt);
         return false;
+    }
+
+    private startHomeFlight(bee: Bee): void {
+        bee.leaveFrom.set(this.pos);
+        bee.s = homeArc(bee.leaveFrom, this.hiveEntrance(bee.leaveTo), bee.leaveCtrl);
+        this.enter(bee, LEAVE);
     }
 
     private animate(bee: Bee, dt: number): void {
@@ -177,7 +191,7 @@ export class BeeSwarm extends Component {
     private enter(bee: Bee, phase: number): void {
         bee.phase = phase;
         bee.timer = 0;
-        if (phase !== GRAB) bee.parts.root.setScale(1, 1, 1);
+        if (phase !== GRAB && phase !== LEAVE) bee.parts.root.setScale(1, 1, 1);
     }
 
     private localToWorld(center: Vec3, dir: Vec3, dist: number, out: Vec3): Vec3 {

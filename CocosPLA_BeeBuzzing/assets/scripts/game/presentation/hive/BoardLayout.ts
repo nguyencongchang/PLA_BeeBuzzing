@@ -5,7 +5,9 @@ import { Vec3 } from 'cc';
  * Top: sculpture. Middle: active-hive slots. Bottom: hive queues (lines).
  */
 export const BOARD_LAYOUT = {
-    sculptureY: 2.3,
+    sculptureY: 1.5,
+    /** Uniform sculpture scale so the model fits between the hanging hive and the slots. */
+    sculptureScale: 0.8,
     slotY: -1.9,
     slotSpacing: 1.25,
     lineSpacing: 1.3,

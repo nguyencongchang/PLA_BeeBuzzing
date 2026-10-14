@@ -1,4 +1,4 @@
-import { _decorator, Camera, Color, Component, Graphics, Node, Sprite, SpriteFrame, UITransform, Vec3, Widget } from 'cc';
+import { _decorator, Camera, Color, Component, geometry, Graphics, Node, Sprite, SpriteFrame, UITransform, Vec3, Widget } from 'cc';
 import { BOARD_LAYOUT, lineX, slotPosition } from '../hive/BoardLayout';
 import { uiNode } from './HudWidgets';
 import { BackdropSprites } from '../../infrastructure/BeeAssetLoader';
@@ -13,6 +13,12 @@ const LEAF_ASPECT = 302 / 936;
 const BG_COLOR = new Color(27, 31, 69, 255);
 /** The tile pattern is busy at full strength; blend it over the clear color. */
 const TILE_TINT = new Color(255, 255, 255, 90);
+/** Big honey hive hanging from the leaves at the top center: where bees bring the cubes. */
+const HIVE_W = 300;
+const HIVE_H = 228;
+const HIVE_TOP = 150;
+/** Entrance hole center, as a fraction of the sprite height below its center. */
+const HIVE_ENTRANCE_Y = 0.42;
 
 function sprite(parent: Node, name: string, frame: SpriteFrame, w: number, h: number): Sprite {
     const s = uiNode(name, parent, w, h).addComponent(Sprite);
@@ -24,7 +30,7 @@ function sprite(parent: Node, name: string, frame: SpriteFrame, w: number, h: nu
 
 /**
  * Background layer drawn by the BG canvas camera (behind the 3D world): tiled backdrop,
- * hanging-hive + leaf decor, line trays and slot sockets aligned to the 3D board.
+ * the hanging hive bees fly home to, leaf decor, line trays and slot sockets aligned to the 3D board.
  */
 @ccclass('BoardBackdrop')
 export class BoardBackdrop extends Component {
@@ -39,6 +45,9 @@ export class BoardBackdrop extends Component {
     private readonly a = new Vec3();
     private readonly b = new Vec3();
     private layoutKey = '';
+    private bgCamera: Camera | null = null;
+    private hive: Node | null = null;
+    private readonly ray = new geometry.Ray();
 
     /** `bgCamera` renders this layer before the 3D camera. */
     init(camera: Camera, worldRoot: Node, bgCamera: Camera | null, sprites: BackdropSprites, slotCount: number, lineCount: number): void {
@@ -47,6 +56,7 @@ export class BoardBackdrop extends Component {
         this.slotCount = slotCount;
         this.lineCount = lineCount;
 
+        this.bgCamera = bgCamera;
         if (bgCamera) {
             bgCamera.clearFlags = Camera.ClearFlag.SOLID_COLOR;
             bgCamera.clearColor = BG_COLOR;
@@ -80,31 +90,34 @@ export class BoardBackdrop extends Component {
         this.layout();
     }
 
-    private decorTop(sprites: BackdropSprites): void {
-        const hiveL = sprite(this.node, 'HangingHiveL', sprites.hiveA, 262, 199);
-        this.alignCorner(hiveL.node, true, -30, 120);
-        const hiveR = sprite(this.node, 'HangingHiveR', sprites.hiveB, 262, 199);
-        hiveR.node.setScale(-1, 1, 1);
-        this.alignCorner(hiveR.node, false, -30, 120);
+    /**
+     * World position (board plane) of the hive entrance hole, or null without a BG camera.
+     * The hive is UI on the BG canvas, so the hole is projected to screen and back into 3D.
+     */
+    hiveEntrance(out: Vec3): Vec3 | null {
+        if (!this.hive || !this.bgCamera) return null;
+        this.tmp.set(0, -HIVE_H * HIVE_ENTRANCE_Y, 0);
+        Vec3.transformMat4(this.tmp, this.tmp, this.hive.worldMatrix);
+        this.bgCamera.worldToScreen(this.tmp, this.a);
+        this.camera.screenPointToRay(this.a.x, this.a.y, this.ray);
+        const planeZ = this.worldRoot.worldPosition.z;
+        if (Math.abs(this.ray.d.z) < 1e-6) return null;
+        return Vec3.scaleAndAdd(out, this.ray.o, this.ray.d, (planeZ - this.ray.o.z) / this.ray.d.z);
+    }
 
+    private decorTop(sprites: BackdropSprites): void {
+        this.hive = sprite(this.node, 'HangingHive', sprites.hive, HIVE_W, HIVE_H).node;
+        const hw = this.hive.addComponent(Widget);
+        hw.isAlignTop = hw.isAlignHorizontalCenter = true;
+        hw.top = HIVE_TOP;
+        hw.horizontalCenter = 0;
+
+        // Leaves drawn after the hive so they overlap its top, as if it hangs from them.
         const width = 1240;
         const leaves = sprite(this.node, 'Leaves', sprites.leaves, width, width * LEAF_ASPECT);
         const w = leaves.node.addComponent(Widget);
         w.isAlignTop = true;
         w.top = -40;
-    }
-
-    private alignCorner(node: Node, left: boolean, top: number, side: number): void {
-        const w = node.getComponent(Widget) ?? node.addComponent(Widget);
-        w.isAlignTop = true;
-        w.top = top;
-        if (left) {
-            w.isAlignLeft = true;
-            w.left = side - 131;
-        } else {
-            w.isAlignRight = true;
-            w.right = side - 131;
-        }
     }
 
     /** Pixels per world unit at the board plane (world root is uniformly scaled). */

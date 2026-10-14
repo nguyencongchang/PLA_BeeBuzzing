@@ -5,7 +5,7 @@ import { MaterialFactory } from './MaterialFactory';
 const WING_HINGE_X = 0.18;
 const WING_HINGE_Y = 0.45;
 /** Desired world sizes (cell size is 0.2). */
-const BEE_LENGTH = 0.34;
+const BEE_LENGTH = 0.4;
 const HIVE_WIDTH = 1.05;
 const BEE_MESH_LENGTH = 1.24;
 const HIVE_MESH_WIDTH = 2.14;

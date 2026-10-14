@@ -17,10 +17,13 @@ export interface Bee {
     cube: Node | null;
     flap: number;
     readonly start: Vec3;
+    /** Quadratic Bezier control point of the arc from the slot to the path start (world). */
+    readonly arcCtrl: Vec3;
     readonly path: BeeFlightPath;
     readonly center: Vec3;   // target cube center, sculpture-local
     readonly faceDir: Vec3;  // local unit vector out of the grabbed face
     readonly leaveFrom: Vec3;
+    readonly leaveCtrl: Vec3;
     readonly leaveTo: Vec3;
     readonly prev: Vec3;
 }
@@ -29,6 +32,8 @@ export interface Bee {
 export class BeePool {
     private readonly freeBees: Bee[] = [];
     private readonly freeCubes: Node[] = [];
+    /** Uniform scale of a carried cube at full size (set when the first cube is built). */
+    cubeScale = 1;
 
     constructor(private readonly kit: ModelKit, private readonly parent: Node, private readonly cellSize: number) {}
 
@@ -42,8 +47,8 @@ export class BeePool {
             parts.root.children[0].setRotationFromEuler(0, BEE_MODEL_YAW, 0);
             bee = {
                 parts, color, phase: 0, timer: 0, s: 0, leadLength: 0, target: -1, cube: null,
-                flap: Math.random() * 10, start: new Vec3(), path: new BeeFlightPath(), center: new Vec3(),
-                faceDir: new Vec3(), leaveFrom: new Vec3(), leaveTo: new Vec3(), prev: new Vec3(),
+                flap: Math.random() * 10, start: new Vec3(), arcCtrl: new Vec3(), path: new BeeFlightPath(), center: new Vec3(),
+                faceDir: new Vec3(), leaveFrom: new Vec3(), leaveCtrl: new Vec3(), leaveTo: new Vec3(), prev: new Vec3(),
             };
         }
         bee.color = color;
@@ -56,9 +61,11 @@ export class BeePool {
         let cube = this.freeCubes.pop();
         if (cube) {
             this.kit.paintCube(cube, color);
+            cube.setScale(this.cubeScale, this.cubeScale, this.cubeScale);
         } else {
             cube = this.kit.createCube(color, this.cellSize);
             cube.setParent(this.parent);
+            this.cubeScale = cube.scale.x;
         }
         cube.setWorldPosition(worldPos);
         cube.setWorldRotation(worldRot);

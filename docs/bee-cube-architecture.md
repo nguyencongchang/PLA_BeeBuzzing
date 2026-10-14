@@ -57,8 +57,13 @@ cube t reachable  ⇔  min_e h(t, e) ≤ maxTurns
 - **Bees / flying cubes**: plain nodes sharing instanced materials (`voxel-lit.effect`,
   `USE_INSTANCING`), pooled, driven by one update loop (no per-bee component). Wings flap
   procedurally on hinge pivots — the FBX ships no animation clip.
+- Flight: slot → quadratic-Bezier arc bulging outward (streams fan out like a fountain) →
+  solver escape route in reverse → grab → pull → carry back out → Bezier arc home into the
+  hanging hive's entrance (top center), shrinking into the hole. The entrance is a BG-canvas
+  sprite projected into the 3D board plane (`BoardBackdrop.hiveEntrance`).
 - Flight paths are stored in sculpture-local space and evaluated through the current world
-  matrix, so bees keep tracking their cube while the player rotates the model.
+  matrix (lengths in world units via the sculpture scale), so bees keep tracking their cube
+  while the player rotates the model.
 
 ## Gameplay loop
 

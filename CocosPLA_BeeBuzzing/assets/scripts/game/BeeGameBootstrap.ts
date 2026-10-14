@@ -90,6 +90,7 @@ export class BeeGameBootstrap extends Component {
 
         const sculptureNode = createChild(this.world, 'Sculpture');
         sculptureNode.setPosition(0, BOARD_LAYOUT.sculptureY, 0);
+        sculptureNode.setScale(BOARD_LAYOUT.sculptureScale, BOARD_LAYOUT.sculptureScale, BOARD_LAYOUT.sculptureScale);
         const sculpture = sculptureNode.addComponent(SculptureView);
         sculpture.init(grid, space, buildPaletteFloat32(), materials.sculpture());
         const rotator = sculptureNode.addComponent(SculptureRotator);
@@ -132,8 +133,10 @@ export class BeeGameBootstrap extends Component {
             const bgCamera = bgCanvas.getComponentInChildren(Camera);
             const templateBg = bgCanvas.getChildByName('BG');
             if (templateBg) templateBg.active = false;
-            createChild(bgCanvas, 'BeeBackdrop', bgCanvas.layer).addComponent(BoardBackdrop)
-                .init(this.camera, this.world, bgCamera, backdrop, board.slotCount, board.lineCount);
+            const view = createChild(bgCanvas, 'BeeBackdrop', bgCanvas.layer).addComponent(BoardBackdrop);
+            view.init(this.camera, this.world, bgCamera, backdrop, board.slotCount, board.lineCount);
+            const fallback = swarm.hiveEntrance;
+            swarm.hiveEntrance = (out) => view.hiveEntrance(out) ?? fallback(out);
         }
         this.node.addComponent(GameAudio);
         this.hideTemplateHud();
