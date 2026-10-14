@@ -17,9 +17,9 @@ const QUEUED_HIVE_SHADE = 0.55;
 /** Thin black silhouette outline: back faces of a slightly larger hull (inverted hull). */
 const HIVE_OUTLINE_SCALE = 1.05;
 const OUTLINE_HEX = '#000000';
-/** Soft drop shadow: translucent dark copy offset down-left, behind the hive. */
-const HIVE_SHADOW_OFFSET_X = -0.09;
-const HIVE_SHADOW_OFFSET_Y = -0.09;
+/** Soft shadow: translucent dark copy offset up-left behind the hive (as in the reference). */
+const HIVE_SHADOW_OFFSET_X = -0.1;
+const HIVE_SHADOW_OFFSET_Y = 0.1;
 const HIVE_SHADOW_DEPTH = 0.1;
 const SHADOW_HEX = '#00000080';
 /** Hive mesh spans z 0..1 (mesh units); the hull is scaled around this center. */

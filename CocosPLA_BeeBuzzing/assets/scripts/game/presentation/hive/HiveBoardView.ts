@@ -1,4 +1,4 @@
-import { _decorator, Camera, Color, Component, Label, Layers, Node, TTFFont, tween, Tween, UITransform, Vec3 } from 'cc';
+import { _decorator, Camera, Color, Component, Label, Layers, math, Node, Quat, TTFFont, tween, Tween, UITransform, Vec3 } from 'cc';
 import { HiveBoard, HiveState } from '../../domain/HiveBoard';
 import { ModelKit } from '../rendering/ModelKit';
 import { BOARD_LAYOUT, queuePosition, slotPosition } from './BoardLayout';
@@ -11,6 +11,9 @@ const ADVANCE_DURATION = 0.22;
 const LABEL_FONT_SIZE = 40;
 /** Bees leave from the top-front of the hive. */
 const LAUNCH_OFFSET = new Vec3(0, 0.15, 0.6);
+/** Hives face the camera, tilted a little further so they read as seen from below (reference). */
+const FACE_TILT = new Quat();
+Quat.fromAxisAngle(FACE_TILT, Vec3.UNIT_X, math.toRadian(-6));
 
 interface HiveView {
     readonly hive: HiveState;
@@ -116,6 +119,7 @@ export class HiveBoardView extends Component {
             }
             const visible = view.node.scale.x > 0.05;
             view.label.node.active = visible;
+            if (visible) this.faceCamera(view.node);
             if (!visible) return;
             if (view.shownAmmo !== view.hive.ammo) {
                 view.shownAmmo = view.hive.ammo;
@@ -125,6 +129,15 @@ export class HiveBoardView extends Component {
             this.camera.convertToUINode(this.tmp, view.label.node.parent!, this.tmpUi);
             view.label.node.setPosition(this.tmpUi);
         });
+    }
+
+    /** Points the hive's front (+Z) at the camera, then applies the from-below tilt. */
+    private faceCamera(node: Node): void {
+        const pos = node.worldPosition;
+        Vec3.subtract(this.tmp, pos, this.camera.node.worldPosition);
+        Vec3.add(this.tmp, pos, this.tmp); // lookAt aims -Z, so aim at the point behind the hive
+        node.lookAt(this.tmp);
+        node.rotate(FACE_TILT);
     }
 
     private layoutLine(line: number, animate: boolean): void {
