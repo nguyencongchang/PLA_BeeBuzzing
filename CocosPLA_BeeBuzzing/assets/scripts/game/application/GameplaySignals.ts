@@ -14,10 +14,6 @@ export class BeeLaunchedSignal {
     constructor(public readonly color: number) {}
 }
 
-export class LevelProgressSignal {
-    constructor(public readonly removed: number, public readonly total: number) {}
-}
-
 /** Active hives can't shoot from this angle but could after rotating. */
 export class RotateHintSignal {
     constructor(public readonly visible: boolean) {}

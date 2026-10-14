@@ -8,7 +8,7 @@ const { ccclass } = _decorator;
 const JUMP_DURATION = 0.32;
 const JUMP_HEIGHT = 1.1;
 const ADVANCE_DURATION = 0.22;
-const LABEL_FONT_SIZE = 46;
+const LABEL_FONT_SIZE = 40;
 /** Bees leave from the top-front of the hive. */
 const LAUNCH_OFFSET = new Vec3(0, 0.15, 0.6);
 
@@ -28,6 +28,7 @@ interface HiveView {
 @ccclass('HiveBoardView')
 export class HiveBoardView extends Component {
     private board: HiveBoard = null!;
+    private kit: ModelKit = null!;
     private camera: Camera = null!;
     private readonly views = new Map<number, HiveView>();
     private readonly tmp = new Vec3();
@@ -35,6 +36,7 @@ export class HiveBoardView extends Component {
 
     init(board: HiveBoard, kit: ModelKit, camera: Camera, labelRoot: Node, font: TTFFont | null): void {
         this.board = board;
+        this.kit = kit;
         this.camera = camera;
         for (let line = 0; line < board.lineCount; line++) {
             board.line(line).forEach((hive) => {
@@ -50,6 +52,7 @@ export class HiveBoardView extends Component {
     /** Hive jumped from the front of its line into a slot. */
     onHiveActivated(hive: HiveState, slot: number): void {
         const view = this.views.get(hive.spec.id)!;
+        this.kit.paintHive(view.node, hive.spec.color, false);
         const from = view.node.position.clone();
         const to = slotPosition(slot, this.board.slotCount, new Vec3());
         const proxy = { t: 0 };
@@ -129,6 +132,7 @@ export class HiveBoardView extends Component {
             const view = this.views.get(hive.spec.id)!;
             const pos = queuePosition(line, this.board.lineCount, index, new Vec3());
             const scale = index < BOARD_LAYOUT.visibleQueue ? 1 : 0;
+            this.kit.paintHive(view.node, hive.spec.color, index > 0);
             if (animate) {
                 tween(view.node).to(ADVANCE_DURATION, { position: pos, scale: new Vec3(scale, scale, scale) }, { easing: 'quadOut' }).start();
             } else {

@@ -6,6 +6,8 @@ const TECH_TRANSPARENT = 1;
 
 export interface SolidMaterialOptions {
     edge?: boolean;
+    /** RGB multiplier (e.g. 0.6 for dimmed queue hives). */
+    shade?: number;
     transparent?: boolean;
     texture?: Texture2D | null;
 }
@@ -32,12 +34,15 @@ export class MaterialFactory {
 
     /** Single-color material keyed by hex color + options. */
     solid(hex: string, options: SolidMaterialOptions = {}): Material {
-        const key = `solid:${hex}:${options.edge ? 1 : 0}:${options.transparent ? 1 : 0}:${options.texture?.uuid ?? ''}`;
+        const shade = options.shade ?? 1;
+        const key = `solid:${hex}:${options.edge ? 1 : 0}:${options.transparent ? 1 : 0}:${options.texture?.uuid ?? ''}:${shade}`;
         return this.getOrCreate(key, () => {
             const defines: Record<string, boolean> = { USE_INSTANCING: true };
             if (options.edge) defines.USE_EDGE = true;
             if (options.texture) defines.USE_TEXTURE = true;
-            const mat = this.create(options.transparent ? TECH_TRANSPARENT : TECH_OPAQUE, defines, new Color().fromHEX(hex));
+            const color = new Color().fromHEX(hex);
+            color.set(Math.round(color.r * shade), Math.round(color.g * shade), Math.round(color.b * shade), color.a);
+            const mat = this.create(options.transparent ? TECH_TRANSPARENT : TECH_OPAQUE, defines, color);
             if (options.texture) mat.setProperty('mainTexture', options.texture);
             return mat;
         });

@@ -13,7 +13,7 @@ const IDLE_HINT_DELAY = 4;
 /** Fingertip sits at the top-left of the hand image. */
 const FINGERTIP_OFFSET = new Vec3(55, -70, 0);
 
-/** Pulsing hand pointing at a tappable hive: on start and whenever the player idles. */
+/** Pulsing hand pointing at a tappable hive whenever the player idles (after the first-time tutorial). */
 @ccclass('TutorialHand')
 export class TutorialHand extends Component {
     private camera: Camera = null!;
@@ -22,6 +22,7 @@ export class TutorialHand extends Component {
     private hand: Node = null!;
     private idle = 0;
     private finished = false;
+    private hintsActive = false;
     private readonly tmp = new Vec3();
     private readonly ui = new Vec3();
 
@@ -34,7 +35,7 @@ export class TutorialHand extends Component {
         sprite.sizeMode = Sprite.SizeMode.CUSTOM;
         sprite.spriteFrame = frame;
         this.hand.addComponent(UIOpacity);
-        this.idle = IDLE_HINT_DELAY; // show right away
+        this.hand.active = false;
         SignalBus.instance.subscribe(HiveActivatedSignal, this.onTap);
         SignalBus.instance.subscribe(GameOutcomeSignal, this.onFinish);
     }
@@ -45,7 +46,7 @@ export class TutorialHand extends Component {
     }
 
     update(dt: number): void {
-        if (this.finished) return;
+        if (this.finished || !this.hintsActive) return;
         this.idle += dt;
         const line = this.pickLine();
         const shouldShow = this.idle >= IDLE_HINT_DELAY && line !== -1;
@@ -58,6 +59,12 @@ export class TutorialHand extends Component {
         this.camera.convertToUINode(this.tmp, this.node, this.ui);
         Vec3.add(this.ui, this.ui, FINGERTIP_OFFSET);
         this.hand.setPosition(this.ui);
+    }
+
+    /** Starts idle reminders (call once the first-time tutorial is done). */
+    startIdleHints(): void {
+        this.hintsActive = true;
+        this.idle = 0;
     }
 
     /** Front-most line with a hive while a slot is free; -1 when tapping makes no sense. */

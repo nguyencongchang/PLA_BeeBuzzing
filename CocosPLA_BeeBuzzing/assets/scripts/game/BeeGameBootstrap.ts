@@ -22,7 +22,7 @@ import { BeeSwarm } from './presentation/bee/BeeSwarm';
 import { GameInputRouter } from './presentation/input/GameInputRouter';
 import { GameHud } from './presentation/hud/GameHud';
 import { BoardBackdrop } from './presentation/hud/BoardBackdrop';
-import { TutorialHand } from './presentation/hud/TutorialHand';
+import { IntroSequence } from './presentation/hud/IntroSequence';
 import { GameAudio } from './presentation/hud/GameAudio';
 
 const { ccclass } = _decorator;
@@ -47,6 +47,10 @@ export class BeeGameBootstrap extends Component {
     private camera: Camera = null!;
     private world: Node = null!;
     private controller: GameplayController | null = null;
+    /** Gameplay waits for the intro (sculpture assembly) to finish. */
+    private introDone = false;
+    /** Starts the intro; deferred until the loading screen has handed over. */
+    private pendingIntro: (() => void) | null = null;
 
     start(): void {
         this.boot().catch((e) => this.onBootFailed(e));
@@ -59,7 +63,13 @@ export class BeeGameBootstrap extends Component {
     update(): void {
         if (this.world) this.frameWorld();
         const c = this.controller;
-        if (c && !c.running && (GameView.instance?.isInGameplay() ?? true)) c.running = true;
+        const gameplayReady = GameView.instance?.isInGameplay() ?? true;
+        if (this.pendingIntro && gameplayReady) {
+            const startIntro = this.pendingIntro;
+            this.pendingIntro = null;
+            startIntro();
+        }
+        if (c && this.introDone && !c.running && gameplayReady) c.running = true;
     }
 
     private async boot(): Promise<void> {
@@ -121,20 +131,17 @@ export class BeeGameBootstrap extends Component {
 
         const hud = createChild(uiCanvas, 'BeeHud', Layers.Enum.UI_2D).addComponent(GameHud);
         hud.node.setSiblingIndex(2);
-        hud.init({ camera: this.camera, worldRoot: this.world, board, font, config, totalCubes: grid.aliveCount });
+        hud.init({ font, config, levelNumber: 1 });
 
-        if (hand) {
-            const tutorial = createChild(uiCanvas, 'BeeTutorial', Layers.Enum.UI_2D).addComponent(TutorialHand);
-            tutorial.node.addComponent(UITransform);
-            tutorial.node.setSiblingIndex(3);
-            tutorial.init(this.camera, this.world, board, hand);
-        }
+        // After the loading screen: intro (sculpture assembles) → first-time tutorial → idle hints.
+        const intro = new IntroSequence({ grid, board, materials, sculpture, camera: this.camera, worldRoot: this.world, uiCanvas, hand, font });
+        this.pendingIntro = () => intro.play().then(() => { this.introDone = true; });
         if (backdrop && bgCanvas) {
             const bgCamera = bgCanvas.getComponentInChildren(Camera);
             const templateBg = bgCanvas.getChildByName('BG');
             if (templateBg) templateBg.active = false;
             const view = createChild(bgCanvas, 'BeeBackdrop', bgCanvas.layer).addComponent(BoardBackdrop);
-            view.init(this.camera, this.world, bgCamera, backdrop, board.slotCount, board.lineCount);
+            view.init(this.camera, this.world, bgCamera, backdrop, board.slotCount);
             const fallback = swarm.hiveEntrance;
             swarm.hiveEntrance = (out) => view.hiveEntrance(out) ?? fallback(out);
         }

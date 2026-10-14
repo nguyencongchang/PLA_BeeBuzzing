@@ -28,7 +28,7 @@ test('HiveBoard: tap moves the front hive to the first free slot and rejects whe
     assert.deepEqual(board.tap(2), { ok: false, reason: 'empty-line' });
 });
 
-test('TargetSelector: highest, then closest to camera, then right-most', () => {
+test('TargetSelector: within the front face, highest then right-most', () => {
     // 3x3x3 solid; camera +Z only → only the z=2 face is reachable.
     const g = makeGrid(3, 3, 3, solidBox(3, 4));
     const solver = new ReachabilitySolver(g, 0);
@@ -43,6 +43,17 @@ test('TargetSelector: highest, then closest to camera, then right-most', () => {
     const second = selector.next(4, reserved);
     assert.deepEqual([g.xs[second], g.ys[second], g.zs[second]], [1, 2, 2]);
     assert.equal(selector.next(9, reserved), -1);
+});
+
+test('TargetSelector: the face closest to the camera beats a higher cube further back', () => {
+    // Two cubes reachable from any side: (1,2,0) is high but at the back, (1,0,2) low but in front.
+    const g = makeGrid(3, 3, 3, [[1, 2, 0, 4], [1, 0, 2, 4]]);
+    const solver = new ReachabilitySolver(g, 0);
+    solver.solve(0b111111);
+    const selector = new TargetSelector(g, solver);
+    selector.rebuild(IDENTITY_VIEW); // row 3 = toward camera = +Z
+    const first = selector.next(4, new Uint8Array(g.cellCount));
+    assert.deepEqual([g.xs[first], g.ys[first], g.zs[first]], [1, 0, 2]);
 });
 
 test('GameRules: win, lose only on a true deadlock', () => {

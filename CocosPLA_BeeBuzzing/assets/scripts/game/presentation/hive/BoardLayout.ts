@@ -1,25 +1,31 @@
 import { Vec3 } from 'cc';
 
 /**
- * World-space layout of the play field (camera looks down -Z at the origin).
- * Top: sculpture. Middle: active-hive slots. Bottom: hive queues (lines).
+ * World-space layout of the play field (camera looks down -Z at the origin), matched to the
+ * reference video (1080x1920, ~138 px per world unit): hive + leaves on top, upright model
+ * with a ground shadow, a row of 5 slots, a separator, then the hive queues (rear rows dimmed).
  */
 export const BOARD_LAYOUT = {
-    sculptureY: 1.5,
+    sculptureY: 1.85,
     /** Uniform sculpture scale so the model fits between the hanging hive and the slots. */
     sculptureScale: 0.8,
-    slotY: -1.9,
-    slotSpacing: 1.25,
-    lineSpacing: 1.3,
-    lineFrontY: -3.35,
-    lineStep: 1.1,
+    /** Ground shadow ellipse under the model. */
+    shadowY: -1.05,
+    shadowHalfWidth: 1.9,
+    slotY: -2.35,
+    slotSpacing: 1.15,
+    /** Separator line between the play area and the hive queue panel. */
+    separatorY: -3.02,
+    lineSpacing: 1.2,
+    lineFrontY: -3.6,
+    lineStep: 1.0,
     /** Queue entries drawn per line; deeper hives wait hidden behind the last one. */
     visibleQueue: 3,
     /** Half-extent of the play field the camera must always fit (world units). */
     minHalfWidth: 3.9,
     minHalfHeight: 6.9,
     /** Tap below this world Y targets a hive line. */
-    lineTapMaxY: -2.6,
+    lineTapMaxY: -3.0,
 } as const;
 
 export function slotPosition(slot: number, slotCount: number, out: Vec3): Vec3 {

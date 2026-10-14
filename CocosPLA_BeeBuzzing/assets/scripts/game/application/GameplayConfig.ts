@@ -31,7 +31,7 @@ export const DEFAULT_GAMEPLAY_CONFIG: Readonly<GameplayConfig> = {
     beeSpeed: 16,
     maxBeesInFlight: 160,
     autoRotateSpeed: 8,
-    initialTilt: 25,
+    initialTilt: 10,
     speedButtonEnabled: true,
 };
 

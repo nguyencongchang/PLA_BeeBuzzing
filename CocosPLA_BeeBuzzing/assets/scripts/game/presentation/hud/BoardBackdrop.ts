@@ -1,22 +1,33 @@
 import { _decorator, Camera, Color, Component, geometry, Graphics, Node, Sprite, SpriteFrame, UITransform, Vec3, Widget } from 'cc';
-import { BOARD_LAYOUT, lineX, slotPosition } from '../hive/BoardLayout';
+import { BOARD_LAYOUT, slotPosition } from '../hive/BoardLayout';
 import { uiNode } from './HudWidgets';
+import { fillEllipse, fillVerticalGradient, hexagonPath } from './SceneryPainter';
 import { BackdropSprites } from '../../infrastructure/BeeAssetLoader';
 
 const { ccclass } = _decorator;
 
-const SLOT_SIZE_WORLD = 1.25;
-const TRAY_WIDTH_WORLD = 1.2;
-const TRAY_COLOR = new Color(10, 14, 40, 150);
-const SLOT_BAR_COLOR = new Color(255, 190, 60, 60);
+// Palette sampled from the reference video.
+const SKY_TOP = new Color(46, 150, 240, 255);
+const SKY_HORIZON = new Color(200, 233, 255, 255);
+const HILL_FAR = new Color(150, 205, 130, 255);
+const HILL_NEAR = new Color(104, 178, 88, 255);
+const FLOOR_TOP = new Color(244, 205, 232, 255);
+const FLOOR_BOTTOM = new Color(226, 160, 210, 255);
+const PLATFORM = new Color(250, 222, 240, 255);
+const SHADOW = new Color(80, 40, 90, 80);
+const SLOT_FILL = new Color(214, 104, 160, 150);
+const SLOT_STROKE = new Color(255, 255, 255, 110);
+const SEPARATOR = new Color(255, 255, 255, 120);
+const PANEL_TOP = new Color(150, 96, 170, 255);
+const PANEL_BOTTOM = new Color(78, 44, 104, 255);
+/** Horizon height as a fraction of the screen from the top. */
+const HORIZON = 0.4;
+const SLOT_RADIUS_WORLD = 0.52;
 const LEAF_ASPECT = 302 / 936;
-const BG_COLOR = new Color(27, 31, 69, 255);
-/** The tile pattern is busy at full strength; blend it over the clear color. */
-const TILE_TINT = new Color(255, 255, 255, 90);
-/** Big honey hive hanging from the leaves at the top center: where bees bring the cubes. */
-const HIVE_W = 300;
-const HIVE_H = 228;
-const HIVE_TOP = 150;
+/** Honey hive bees fly home to: in front of the leaves at the top center. */
+const HIVE_W = 240;
+const HIVE_H = 182;
+const HIVE_TOP = -6;
 /** Entrance hole center, as a fraction of the sprite height below its center. */
 const HIVE_ENTRANCE_Y = 0.42;
 
@@ -29,56 +40,53 @@ function sprite(parent: Node, name: string, frame: SpriteFrame, w: number, h: nu
 }
 
 /**
- * Background layer drawn by the BG canvas camera (behind the 3D world): tiled backdrop,
- * the hanging hive bees fly home to, leaf decor, line trays and slot sockets aligned to the 3D board.
+ * Background layer drawn by the BG canvas camera (behind the 3D world), matching the
+ * reference: sky + hills, pink floor with the model's shadow, slot hexes, separator and
+ * queue panel, leaves and the hive bees fly home to. All vector except leaves / hive.
  */
 @ccclass('BoardBackdrop')
 export class BoardBackdrop extends Component {
     private camera: Camera = null!;
     private worldRoot: Node = null!;
     private slotCount = 0;
-    private lineCount = 0;
-    private slots: Node[] = [];
-    private trays: Graphics = null!;
-    private slotBar: Graphics = null!;
+    private scenery: Graphics = null!;
+    private bgCamera: Camera | null = null;
+    private hive: Node | null = null;
+    private layoutKey = '';
     private readonly tmp = new Vec3();
     private readonly a = new Vec3();
     private readonly b = new Vec3();
-    private layoutKey = '';
-    private bgCamera: Camera | null = null;
-    private hive: Node | null = null;
     private readonly ray = new geometry.Ray();
 
     /** `bgCamera` renders this layer before the 3D camera. */
-    init(camera: Camera, worldRoot: Node, bgCamera: Camera | null, sprites: BackdropSprites, slotCount: number, lineCount: number): void {
+    init(camera: Camera, worldRoot: Node, bgCamera: Camera | null, sprites: BackdropSprites, slotCount: number): void {
         this.camera = camera;
         this.worldRoot = worldRoot;
         this.slotCount = slotCount;
-        this.lineCount = lineCount;
-
         this.bgCamera = bgCamera;
         if (bgCamera) {
             bgCamera.clearFlags = Camera.ClearFlag.SOLID_COLOR;
-            bgCamera.clearColor = BG_COLOR;
+            bgCamera.clearColor = SKY_TOP;
         }
+
         this.node.addComponent(UITransform);
         const widget = this.node.addComponent(Widget);
         widget.isAlignTop = widget.isAlignBottom = widget.isAlignLeft = widget.isAlignRight = true;
         widget.top = widget.bottom = widget.left = widget.right = 0;
+        this.scenery = uiNode('Scenery', this.node).addComponent(Graphics);
 
-        const tile = sprite(this.node, 'Tile', sprites.tile, 100, 100);
-        tile.type = Sprite.Type.TILED;
-        tile.color = TILE_TINT;
-        const tw = tile.node.addComponent(Widget);
-        tw.isAlignTop = tw.isAlignBottom = tw.isAlignLeft = tw.isAlignRight = true;
-        tw.top = tw.bottom = tw.left = tw.right = 0;
+        const width = 1240;
+        const leaves = sprite(this.node, 'Leaves', sprites.leaves, width, width * LEAF_ASPECT);
+        const lw = leaves.node.addComponent(Widget);
+        lw.isAlignTop = true;
+        lw.top = -70;
 
-        this.trays = uiNode('LineTrays', this.node).addComponent(Graphics);
-        this.slotBar = uiNode('SlotBar', this.node).addComponent(Graphics);
-        for (let i = 0; i < slotCount; i++) this.slots.push(sprite(this.node, `Slot${i}`, sprites.slot, 100, 100).node);
-
-        this.decorTop(sprites);
-        this.layout();
+        // Drawn after the leaves so it hangs in front of them, as in the reference.
+        this.hive = sprite(this.node, 'HangingHive', sprites.hive, HIVE_W, HIVE_H).node;
+        const hw = this.hive.addComponent(Widget);
+        hw.isAlignTop = hw.isAlignHorizontalCenter = true;
+        hw.top = HIVE_TOP;
+        hw.horizontalCenter = 0;
     }
 
     /** Re-layout only when the board's projection changed (resize, framing, camera param). */
@@ -87,7 +95,7 @@ export class BoardBackdrop extends Component {
         const key = `${this.pixelsPerUnit().toFixed(2)}:${this.b.x.toFixed(1)}:${this.b.y.toFixed(1)}:${this.node.getComponent(UITransform)!.height}`;
         if (key === this.layoutKey) return;
         this.layoutKey = key;
-        this.layout();
+        this.paint();
     }
 
     /**
@@ -105,21 +113,6 @@ export class BoardBackdrop extends Component {
         return Vec3.scaleAndAdd(out, this.ray.o, this.ray.d, (planeZ - this.ray.o.z) / this.ray.d.z);
     }
 
-    private decorTop(sprites: BackdropSprites): void {
-        this.hive = sprite(this.node, 'HangingHive', sprites.hive, HIVE_W, HIVE_H).node;
-        const hw = this.hive.addComponent(Widget);
-        hw.isAlignTop = hw.isAlignHorizontalCenter = true;
-        hw.top = HIVE_TOP;
-        hw.horizontalCenter = 0;
-
-        // Leaves drawn after the hive so they overlap its top, as if it hangs from them.
-        const width = 1240;
-        const leaves = sprite(this.node, 'Leaves', sprites.leaves, width, width * LEAF_ASPECT);
-        const w = leaves.node.addComponent(Widget);
-        w.isAlignTop = true;
-        w.top = -40;
-    }
-
     /** Pixels per world unit at the board plane (world root is uniformly scaled). */
     private pixelsPerUnit(): number {
         this.toUi(this.a.set(0, 0, 0), this.a);
@@ -132,37 +125,49 @@ export class BoardBackdrop extends Component {
         return this.camera.convertToUINode(this.tmp, this.node, out);
     }
 
-    private layout(): void {
+    private boardY(worldY: number): number {
+        return this.toUi(this.a.set(0, worldY, 0), this.b).y;
+    }
+
+    private paint(): void {
+        const g = this.scenery;
+        const size = this.node.getComponent(UITransform)!;
+        const w = size.width, h = size.height;
+        const left = -w / 2, top = h / 2, bottom = -h / 2;
         const ppu = this.pixelsPerUnit();
-        const slotPx = SLOT_SIZE_WORLD * ppu;
-        for (let i = 0; i < this.slots.length; i++) {
-            const node = this.slots[i];
-            this.toUi(slotPosition(i, this.slotCount, this.a), this.b);
-            node.setPosition(this.b);
-            node.getComponent(UITransform)!.setContentSize(slotPx, slotPx);
-        }
-
-        // Honey bar behind the slot row.
-        this.toUi(slotPosition(0, this.slotCount, this.a), this.b);
-        const left = this.b.x - slotPx * 0.6;
-        const barY = this.b.y;
-        this.toUi(slotPosition(this.slotCount - 1, this.slotCount, this.a), this.b);
-        const g = this.slotBar;
+        const horizon = top - h * HORIZON;
+        const separator = this.boardY(BOARD_LAYOUT.separatorY);
         g.clear();
-        g.fillColor = SLOT_BAR_COLOR;
-        g.roundRect(left, barY - slotPx * 0.55, this.b.x + slotPx * 0.6 - left, slotPx * 1.1, slotPx * 0.3);
-        g.fill();
 
-        // One tray per hive line, from the front hive down past the screen edge.
-        const t = this.trays;
-        t.clear();
-        t.fillColor = TRAY_COLOR;
-        const trayW = TRAY_WIDTH_WORLD * ppu;
-        const bottom = -this.node.getComponent(UITransform)!.height / 2 - 20;
-        for (let line = 0; line < this.lineCount; line++) {
-            this.toUi(this.a.set(lineX(line, this.lineCount), BOARD_LAYOUT.lineFrontY + 0.75, 0), this.b);
-            t.roundRect(this.b.x - trayW / 2, bottom, trayW, this.b.y - bottom, trayW * 0.3);
+        fillVerticalGradient(g, left, top, w, top - horizon, SKY_TOP, SKY_HORIZON);
+        fillEllipse(g, -w * 0.3, horizon, w * 0.45, h * 0.06, HILL_FAR);
+        fillEllipse(g, w * 0.35, horizon, w * 0.4, h * 0.05, HILL_FAR);
+        fillEllipse(g, -w * 0.45, horizon - h * 0.01, w * 0.3, h * 0.04, HILL_NEAR);
+        fillEllipse(g, w * 0.5, horizon - h * 0.01, w * 0.28, h * 0.035, HILL_NEAR);
+        fillVerticalGradient(g, left, horizon, w, horizon - separator, FLOOR_TOP, FLOOR_BOTTOM);
+
+        // Raised platform + soft shadow under the model.
+        const shadowY = this.boardY(BOARD_LAYOUT.shadowY);
+        fillEllipse(g, 0, shadowY + ppu * 0.15, w * 0.62, ppu * 1.1, PLATFORM);
+        fillEllipse(g, 0, shadowY, BOARD_LAYOUT.shadowHalfWidth * ppu, ppu * 0.22, SHADOW);
+
+        // Slot sockets.
+        g.lineWidth = 5;
+        g.strokeColor = SLOT_STROKE;
+        g.fillColor = SLOT_FILL;
+        for (let i = 0; i < this.slotCount; i++) {
+            this.toUi(slotPosition(i, this.slotCount, this.a), this.b);
+            hexagonPath(g, this.b.x, this.b.y, SLOT_RADIUS_WORLD * ppu);
+            g.fill();
+            g.stroke();
         }
-        t.fill();
+
+        // Queue panel under the separator line.
+        fillVerticalGradient(g, left, separator, w, separator - bottom, PANEL_TOP, PANEL_BOTTOM);
+        g.lineWidth = 6;
+        g.strokeColor = SEPARATOR;
+        g.moveTo(left, separator);
+        g.lineTo(-left, separator);
+        g.stroke();
     }
 }

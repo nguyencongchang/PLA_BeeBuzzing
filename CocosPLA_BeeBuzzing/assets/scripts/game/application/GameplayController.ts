@@ -14,7 +14,7 @@ import { GameplayConfig } from './GameplayConfig';
 import { GameTime } from './GameTime';
 import { GameOutcomeMonitor } from './GameOutcomeMonitor';
 import {
-    BeeLaunchedSignal, GameOutcomeSignal, HiveActivatedSignal, HiveTapRejectedSignal, LevelProgressSignal, RotateHintSignal,
+    BeeLaunchedSignal, GameOutcomeSignal, HiveActivatedSignal, HiveTapRejectedSignal, RotateHintSignal,
 } from './GameplaySignals';
 
 const { ccclass } = _decorator;
@@ -63,7 +63,6 @@ export class GameplayController extends Component {
     private lastExitMask = -1;
     private hintVisible = false;
     private outcome: GameOutcome = 'playing';
-    private totalCubes = 0;
 
     init(deps: GameplayDeps): void {
         this.d = deps;
@@ -72,7 +71,6 @@ export class GameplayController extends Component {
         this.monitor = new GameOutcomeMonitor(deps.grid, deps.board, this.selector, deps.config.maxTurns);
         this.reserved = new Uint8Array(deps.grid.cellCount);
         this.fireTimers = new Array(deps.board.slotCount).fill(0);
-        this.totalCubes = deps.grid.aliveCount;
         deps.swarm.onGrab = (target) => this.onCubeGrabbed(target);
         this.refreshReachability(true);
     }
@@ -171,7 +169,6 @@ export class GameplayController extends Component {
         grid.remove(target);
         this.reserved[target] = 0;
         sculpture.markCellRemoved(target);
-        SignalBus.instance.fire(new LevelProgressSignal(this.totalCubes - grid.aliveCount, this.totalCubes));
         if (grid.aliveCount === 0) this.finish('win', WIN_DELAY);
     }
 

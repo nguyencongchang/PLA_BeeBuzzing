@@ -32,6 +32,7 @@ export class SculptureView extends Component {
     private dirty: Uint8Array = null!;
     private dirtyQueue: number[] = [];
     private readonly tmpArr = [0, 0, 0];
+    private visible = true;
 
     init(grid: VoxelGrid, space: GridSpace, palette: Float32Array, material: Material): void {
         this.grid = grid;
@@ -86,6 +87,16 @@ export class SculptureView extends Component {
         return this.space;
     }
 
+    /** Hidden while the intro animation stands in for the chunk meshes. */
+    get chunksVisible(): boolean {
+        return this.visible;
+    }
+
+    set chunksVisible(value: boolean) {
+        this.visible = value;
+        for (const chunk of this.chunks) chunk.node.active = value && chunk.mesh !== null;
+    }
+
     lateUpdate(): void {
         let budget = MAX_REBUILDS_PER_FRAME;
         while (budget > 0 && this.dirtyQueue.length > 0) {
@@ -117,7 +128,7 @@ export class SculptureView extends Component {
         const old = chunk.mesh;
         chunk.mesh = geometry ? utils.MeshUtils.createMesh(geometry) : null;
         chunk.renderer.mesh = chunk.mesh;
-        chunk.node.active = chunk.mesh !== null;
+        chunk.node.active = this.visible && chunk.mesh !== null;
         old?.destroy();
     }
 }

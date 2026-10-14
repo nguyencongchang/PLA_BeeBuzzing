@@ -5,13 +5,15 @@ import { MaterialFactory } from './MaterialFactory';
 const WING_HINGE_X = 0.18;
 const WING_HINGE_Y = 0.45;
 /** Desired world sizes (cell size is 0.2). */
-const BEE_LENGTH = 0.4;
-const HIVE_WIDTH = 1.05;
+const BEE_LENGTH = 0.36;
+const HIVE_WIDTH = 0.92;
 const BEE_MESH_LENGTH = 1.24;
 const HIVE_MESH_WIDTH = 2.14;
 const CUBE_MESH_SIZE = 1.05;
 
 const WING_HEX = '#FFFFFFB0';
+/** Queue hives behind the front one are drawn darker, as in the reference. */
+const QUEUED_HIVE_SHADE = 0.55;
 const STRIPE_HEX = '#1A1A1A';
 
 export interface BeeParts {
@@ -101,6 +103,12 @@ export class ModelKit {
         mesh.setScale(s, s, s);
         addRenderer(mesh, this.hiveMesh).setSharedMaterial(this.materials.gameColor(color), 0);
         return node;
+    }
+
+    /** Front hives (tappable) at full color, hives waiting behind them dimmed. */
+    paintHive(hive: Node, color: number, dimmed: boolean): void {
+        const renderer = hive.getComponentInChildren(MeshRenderer)!;
+        renderer.setSharedMaterial(this.materials.gameColor(color, { shade: dimmed ? QUEUED_HIVE_SHADE : 1 }), 0);
     }
 
     createCube(color: number, cellSize: number): Node {

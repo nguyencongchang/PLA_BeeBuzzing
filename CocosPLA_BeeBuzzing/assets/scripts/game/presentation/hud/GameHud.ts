@@ -1,95 +1,76 @@
-import { _decorator, Camera, Color, Component, Graphics, Label, Node, TTFFont, tween, Tween, UIOpacity, Vec3, Widget } from 'cc';
+import { _decorator, Color, Component, Graphics, Label, Node, TTFFont, tween, Tween, UIOpacity, Vec3, Widget } from 'cc';
 import { SignalBus } from 'db://assets/PLAGameFoundation/signalBus/SignalBus';
-import { HiveBoard } from '../../domain/HiveBoard';
 import { GameplayConfig } from '../../application/GameplayConfig';
 import { GameTime } from '../../application/GameTime';
-import { GameOutcomeSignal, LevelProgressSignal, RotateHintSignal } from '../../application/GameplaySignals';
+import { GameOutcomeSignal, RotateHintSignal } from '../../application/GameplaySignals';
 import { drawRoundRect, uiLabel, uiNode } from './HudWidgets';
 
 const { ccclass } = _decorator;
 
-/** Progress pill sits on the hanging hive's body (the hive "fills" as cubes come home). */
-const BAR_W = 250;
-const BAR_H = 34;
-const BAR_TOP = 240;
-const HONEY = new Color(255, 196, 40, 255);
-const BAR_BG = new Color(40, 28, 20, 200);
+/** Top HUD row (as in the reference): "Level N" pill left, "▶▶ 2x" pill right. */
+const ROW_TOP = 205;
+const SIDE_MARGIN = 32;
+const PILL_H = 64;
+const LEVEL_W = 200;
+const SPEED_W = 170;
+const LEVEL_BG = new Color(40, 70, 110, 150);
+const SPEED_OFF = new Color(46, 196, 64, 255);
+const SPEED_ON = new Color(255, 140, 30, 255);
 
 export interface HudDeps {
-    readonly camera: Camera;
-    readonly worldRoot: Node;
-    readonly board: HiveBoard;
     readonly font: TTFFont | null;
     readonly config: GameplayConfig;
-    readonly totalCubes: number;
+    readonly levelNumber: number;
 }
 
-/** Top progress bar, X2 SPEED toggle and the "drag to rotate" hint. */
+function pinTopCorner(node: Node, left: boolean): void {
+    const w = node.addComponent(Widget);
+    w.isAlignTop = true;
+    w.top = ROW_TOP;
+    if (left) {
+        w.isAlignLeft = true;
+        w.left = SIDE_MARGIN;
+    } else {
+        w.isAlignRight = true;
+        w.right = SIDE_MARGIN;
+    }
+}
+
+/** Level pill, X2 SPEED toggle and the "drag to rotate" hint. */
 @ccclass('GameHud')
 export class GameHud extends Component {
-    private fill: Graphics = null!;
-    private percent: Label = null!;
     private hint: Node = null!;
-    private speedLabel: Label = null!;
     private speedBg: Graphics = null!;
-    private shownProgress = 0;
-    private targetProgress = 0;
+    private speedLabel: Label = null!;
 
     init(d: HudDeps): void {
         const widget = this.node.addComponent(Widget);
         widget.isAlignTop = widget.isAlignBottom = widget.isAlignLeft = widget.isAlignRight = true;
         widget.top = widget.bottom = widget.left = widget.right = 0;
 
-        this.buildProgressBar(d.font);
+        const level = uiNode('LevelPill', this.node, LEVEL_W, PILL_H);
+        pinTopCorner(level, true);
+        drawRoundRect(level.addComponent(Graphics), LEVEL_W, PILL_H, PILL_H / 2, LEVEL_BG);
+        uiLabel(level, `Level ${d.levelNumber}`, 34, d.font);
+
         if (d.config.speedButtonEnabled) this.buildSpeedButton(d.font);
         this.buildHint(d.font);
 
-        SignalBus.instance.subscribe(LevelProgressSignal, this.onProgress);
         SignalBus.instance.subscribe(RotateHintSignal, this.onHint);
         SignalBus.instance.subscribe(GameOutcomeSignal, this.onOutcome);
     }
 
     onDestroy(): void {
-        SignalBus.instance.unsubscribe(LevelProgressSignal, this.onProgress);
         SignalBus.instance.unsubscribe(RotateHintSignal, this.onHint);
         SignalBus.instance.unsubscribe(GameOutcomeSignal, this.onOutcome);
     }
 
-    update(dt: number): void {
-        if (Math.abs(this.shownProgress - this.targetProgress) < 1e-4) return;
-        this.shownProgress += (this.targetProgress - this.shownProgress) * Math.min(1, dt * 10);
-        this.redrawFill();
-    }
-
-    private buildProgressBar(font: TTFFont | null): void {
-        const bar = uiNode('Progress', this.node, BAR_W, BAR_H);
-        const w = bar.addComponent(Widget);
-        w.isAlignTop = true;
-        w.top = BAR_TOP;
-        drawRoundRect(bar.addComponent(Graphics), BAR_W + 10, BAR_H + 10, (BAR_H + 10) / 2, BAR_BG);
-        this.fill = uiNode('Fill', bar, BAR_W, BAR_H).addComponent(Graphics);
-        this.percent = uiLabel(bar, '0%', 26, font);
-        this.redrawFill();
-    }
-
-    private redrawFill(): void {
-        const g = this.fill;
-        g.clear();
-        const w = Math.max(BAR_H, BAR_W * this.shownProgress);
-        g.roundRect(-BAR_W / 2, -BAR_H / 2, w, BAR_H, BAR_H / 2);
-        g.fillColor = HONEY;
-        g.fill();
-        this.percent.string = `${Math.floor(this.shownProgress * 100)}%`;
-    }
-
     private buildSpeedButton(font: TTFFont | null): void {
-        const btn = uiNode('SpeedButton', this.node, 190, 84);
-        const w = btn.addComponent(Widget);
-        w.isAlignTop = w.isAlignRight = true;
-        w.top = 140;
-        w.right = 40;
+        const btn = uiNode('SpeedButton', this.node, SPEED_W, PILL_H);
+        pinTopCorner(btn, false);
         this.speedBg = btn.addComponent(Graphics);
         this.speedLabel = uiLabel(btn, '', 34, font);
+        this.speedLabel.node.setPosition(22, 0);
         this.refreshSpeedButton();
         btn.on(Node.EventType.TOUCH_END, () => {
             GameTime.scale = GameTime.scale > 1 ? 1 : 2;
@@ -98,10 +79,20 @@ export class GameHud extends Component {
         });
     }
 
+    /** Pill + two "fast-forward" triangles drawn as vectors (the font has no ▶ glyph). */
     private refreshSpeedButton(): void {
         const fast = GameTime.scale > 1;
-        drawRoundRect(this.speedBg, 190, 84, 26, fast ? new Color(255, 120, 30, 255) : new Color(70, 160, 60, 255), Color.WHITE, 5);
-        this.speedLabel.string = fast ? 'X2 ON' : 'X2 SPEED';
+        const g = this.speedBg;
+        drawRoundRect(g, SPEED_W, PILL_H, PILL_H / 2, fast ? SPEED_ON : SPEED_OFF, Color.WHITE, 4);
+        g.fillColor = Color.WHITE;
+        for (const x of [-58, -36]) {
+            g.moveTo(x, 13);
+            g.lineTo(x + 20, 0);
+            g.lineTo(x, -13);
+            g.close();
+        }
+        g.fill();
+        this.speedLabel.string = fast ? '1x' : '2x';
     }
 
     private buildHint(font: TTFFont | null): void {
@@ -111,10 +102,6 @@ export class GameHud extends Component {
         uiLabel(this.hint, 'Drag to rotate!', 56, font);
         this.hint.active = false;
     }
-
-    private onProgress = (s: LevelProgressSignal): void => {
-        this.targetProgress = s.total > 0 ? s.removed / s.total : 0;
-    };
 
     private onHint = (s: RotateHintSignal): void => {
         const opacity = this.hint.getComponent(UIOpacity)!;
