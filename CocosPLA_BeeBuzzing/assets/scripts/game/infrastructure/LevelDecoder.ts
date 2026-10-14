@@ -18,6 +18,16 @@ function decodeBase64(b64: string): Uint8Array {
     return out;
 }
 
+/** Every cube is paid for by exactly one bee, otherwise the level can never be won. */
+function assertAmmoMatchesCubes(cells: Uint8Array, hives: readonly HiveSpec[]): void {
+    const balance = new Map<number, number>();
+    for (const v of cells) if (v) balance.set(v - 1, (balance.get(v - 1) ?? 0) + 1);
+    for (const h of hives) balance.set(h.color, (balance.get(h.color) ?? 0) - h.ammo);
+    for (const [color, diff] of balance) {
+        if (diff !== 0) throw new Error(`[LevelDecoder] color ${color}: cubes and bees differ by ${diff}`);
+    }
+}
+
 /** Decodes a compact level (pure, no engine dependency). Throws on malformed input. */
 export function decodeLevel(json: unknown): LevelData {
     const raw = json as CompactLevelJson;
@@ -33,6 +43,7 @@ export function decodeLevel(json: unknown): LevelData {
         }
         return { id, line, color, ammo };
     });
+    assertAmmoMatchesCubes(cells, hives);
     return {
         width,
         height,

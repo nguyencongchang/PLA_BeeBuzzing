@@ -1,6 +1,6 @@
 import {SdkType} from "db://assets/PlayableParamterTool/GameConfig";
 import {
-    AudioParameter, BooleanParameter, ColorParameter, NumberParameter, ObjectParameter, RangeParameter,
+    AudioParameter, BooleanParameter, ColorParameter, NumberParameter, ObjectParameter, RangeParameter, TextParameter,
 } from "db://assets/PlayableParamterTool/parameter/BaseParameter";
 import {
     ButtonParameter,
@@ -55,6 +55,8 @@ export const PlayableConfig = {
     AutoRotateSpeed: new RangeParameter("Auto Rotate Speed", DEFAULT_GAMEPLAY_CONFIG.autoRotateSpeed, {min: 0, max: 40, step: 1}, Categories.Gameplay),
     InitialTilt: new RangeParameter("Initial Tilt", DEFAULT_GAMEPLAY_CONFIG.initialTilt, {min: -30, max: 60, step: 1}, Categories.Gameplay),
     SpeedButton: new BooleanParameter("X2 Speed Button", DEFAULT_GAMEPLAY_CONFIG.speedButtonEnabled, Categories.Gameplay),
+    // Paste a .level.json (Bee Level Viewer → "Copy .level.json"); empty = bundled level.
+    LevelJson: new TextParameter("Level (.level.json)", DEFAULT_GAMEPLAY_CONFIG.levelJson, Categories.Gameplay),
 
     MusicVolume: new RangeParameter("Music Volume", 0.5, {min: 0, max: 1, step: 0.1}, Categories.Default),
     SxfVolume: new RangeParameter("SFX Volume", 0.5, {min: 0, max: 1, step: 0.1}, Categories.Default),

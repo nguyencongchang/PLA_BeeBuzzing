@@ -73,7 +73,7 @@ export class BeeGameBootstrap extends Component {
     }
 
     private async boot(): Promise<void> {
-        const assets = await loadBeeAssets();
+        const assets = await loadBeeAssets(gameplayConfig.levelJson);
         if (!this.isValid) return; // scene changed while loading
         this.build(assets);
         SignalBus.instance.subscribe(GameOutcomeSignal, this.onOutcome);

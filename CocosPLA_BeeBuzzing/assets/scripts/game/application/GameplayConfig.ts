@@ -21,6 +21,8 @@ export interface GameplayConfig {
     initialTilt: number;
     /** Show the X2 SPEED button. */
     speedButtonEnabled: boolean;
+    /** Compact level JSON (.level.json) replacing the bundled level; empty = bundled level. */
+    levelJson: string;
 }
 
 export const DEFAULT_GAMEPLAY_CONFIG: Readonly<GameplayConfig> = {
@@ -33,6 +35,7 @@ export const DEFAULT_GAMEPLAY_CONFIG: Readonly<GameplayConfig> = {
     autoRotateSpeed: 8,
     initialTilt: 10,
     speedButtonEnabled: true,
+    levelJson: '',
 };
 
 /** Live config instance (mutated by parameter updates before gameplay starts). */

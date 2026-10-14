@@ -83,6 +83,17 @@ export const PlayableConfigMeta: Record<keyof typeof PlayableConfig, ParameterMe
         examples: [{ prompt: "Ẩn nút tăng tốc", changes: ["SpeedButton = false"] }],
     },
 
+    LevelJson: {
+        description: "Khối block của màn chơi: dán nội dung .level.json (Bee Level Viewer → Copy .level.json). Để trống = level mặc định (teddy).",
+        aliases: ["level", "màn chơi", "khối", "block", "sculpture", "level json"],
+        aiHints: [
+            "Chỉ nhận định dạng .level.json đã nén (v: 1), không nhận editor JSON.",
+            "Áp dụng khi màn chơi bắt đầu; JSON sai định dạng hoặc số ong không khớp số cube thì game báo lỗi và dùng level mặc định.",
+            "Nên chọn level 500–1000 cube để màn chơi dài 30–60 giây.",
+        ],
+        examples: [{ prompt: "Dùng level trái tim", changes: ["LevelJson = <nội dung 02_heart.level.json>"] }],
+    },
+
     RedirectAfterClicks: {
         description: "Chuyển hướng sớm: sau N lần chạm trong game thì tự mở store (không cần bấm CTA).",
         aliases: ["redirect", "chuyển hướng sớm", "auto redirect", "tự mở store"],

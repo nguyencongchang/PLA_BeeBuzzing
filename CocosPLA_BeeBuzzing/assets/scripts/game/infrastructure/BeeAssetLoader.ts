@@ -48,10 +48,25 @@ async function loadBackdropSprites(): Promise<BackdropSprites> {
     return { tile, leaves, hive, hiveFront, slot };
 }
 
+/**
+ * The dashboard level (compact .level.json text) when set and valid; otherwise the bundled one.
+ * A broken override is logged and ignored so a bad paste never blanks the ad.
+ */
+async function loadLevel(levelJson: string): Promise<LevelData> {
+    if (levelJson.trim()) {
+        try {
+            return decodeLevel(JSON.parse(levelJson));
+        } catch (e) {
+            console.error('[BeeGame] level parameter is not a valid .level.json, using the bundled level', e);
+        }
+    }
+    return decodeLevel((await loadResource(LEVEL_PATH, JsonAsset)).json);
+}
+
 /** Loads everything the level needs from `resources/bee` in parallel. Required assets throw. */
-export async function loadBeeAssets(): Promise<BeeAssets> {
-    const [levelAsset, effect, toonEffect, bee, hive, cube, font, backdrop, hand] = await Promise.all([
-        loadResource(LEVEL_PATH, JsonAsset),
+export async function loadBeeAssets(levelJson: string): Promise<BeeAssets> {
+    const [level, effect, toonEffect, bee, hive, cube, font, backdrop, hand] = await Promise.all([
+        loadLevel(levelJson),
         loadResource(EFFECT_PATH, EffectAsset),
         optional('toon effect', loadResource(TOON_EFFECT_PATH, EffectAsset)),
         loadFirst(modelPaths('bee'), Prefab),
@@ -61,5 +76,5 @@ export async function loadBeeAssets(): Promise<BeeAssets> {
         optional('backdrop sprites', loadBackdropSprites()),
         optional('tutorial hand', loadSpriteFrame(`${SPRITES}/hand`)),
     ]);
-    return { level: decodeLevel(levelAsset.json), effect, toonEffect, bee, hive, cube, font, backdrop, hand };
+    return { level, effect, toonEffect, bee, hive, cube, font, backdrop, hand };
 }
