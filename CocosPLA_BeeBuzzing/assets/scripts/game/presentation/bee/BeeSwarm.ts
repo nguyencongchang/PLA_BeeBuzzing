@@ -11,8 +11,11 @@ const { ccclass } = _decorator;
 
 // Flight phases.
 const APPROACH = 0, GRAB = 1, PULL = 2, CARRY = 3, LEAVE = 4;
-/** Bees perch on the cube for a moment before pulling it out (reference). */
-const PERCH_TIME = 0.35;
+/**
+ * Bees perch on the cube before pulling it out (reference). Long enough that, at ~6 bees/s
+ * on neighbouring targets, a row of 4–5 bees clings side by side while the front one pulls.
+ */
+const PERCH_TIME = 0.8;
 const PERCH_WIGGLE = 0.02;
 /** A readable pull gives the socket-to-cube light trail time to bloom. */
 const PULL_TIME = 0.22;
