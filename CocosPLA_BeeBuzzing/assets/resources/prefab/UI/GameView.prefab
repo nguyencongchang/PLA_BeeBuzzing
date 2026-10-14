@@ -770,8 +770,8 @@
     },
     "_lscale": {
       "__type__": "cc.Vec3",
-      "x": 1,
-      "y": 1,
+      "x": 0.9,
+      "y": 0.9,
       "z": 1
     },
     "_mobility": 0,
@@ -1038,7 +1038,7 @@
     "_left": 0,
     "_right": 36,
     "_top": 0,
-    "_bottom": 58.5,
+    "_bottom": 16,
     "_horizontalCenter": 0,
     "_verticalCenter": 0,
     "_isAbsLeft": true,
