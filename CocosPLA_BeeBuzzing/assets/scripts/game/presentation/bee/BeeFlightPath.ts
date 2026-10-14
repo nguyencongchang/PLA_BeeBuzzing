@@ -122,44 +122,6 @@ export function bezierLength(a: Vec3, c: Vec3, b: Vec3): number {
     return (Vec3.distance(a, b) + Vec3.distance(a, c) + Vec3.distance(c, b)) / 2;
 }
 
-/**
- * Launch curve as in the reference (cubic Bezier): pop straight up out of the hive, glide
- * low toward the base of the model, then climb to the start of the escape route.
- */
-const LAUNCH_RISE = 0.7;
-/** Glide height above the hive (≈ the model's base / shadow level). */
-const GLIDE_HEIGHT = 0.9;
-/** How far (0..1) the glide control point moves from the hive toward the model's center line. */
-const GLIDE_TOWARD_MODEL = 0.85;
-/** Per-bee scatter of the controls so the swarm fans out instead of flying single file. */
-const RISE_JITTER = 0.25;
-const GLIDE_JITTER_X = 0.9;
-const GLIDE_JITTER_Y = 0.35;
-
-/** Point on a cubic Bezier. */
-export function cubicBezier(out: Vec3, a: Vec3, b: Vec3, c: Vec3, d: Vec3, t: number): Vec3 {
-    const u = 1 - t, uu = u * u, tt = t * t;
-    const k0 = uu * u, k1 = 3 * uu * t, k2 = 3 * u * tt, k3 = tt * t;
-    return out.set(
-        k0 * a.x + k1 * b.x + k2 * c.x + k3 * d.x,
-        k0 * a.y + k1 * b.y + k2 * c.y + k3 * d.y,
-        k0 * a.z + k1 * b.z + k2 * c.z + k3 * d.z,
-    );
-}
-
-/** Controls of the launch curve from the hive (`from`) to the path start (`to`); returns its length estimate. */
-export function launchCurve(from: Vec3, to: Vec3, modelCenter: Vec3, outC1: Vec3, outC2: Vec3): number {
-    outC1.set(from.x + (Math.random() - 0.5) * RISE_JITTER, from.y + LAUNCH_RISE, from.z);
-    const baseX = (modelCenter.x + to.x) / 2;
-    outC2.set(
-        from.x + (baseX - from.x) * GLIDE_TOWARD_MODEL + (Math.random() - 0.5) * GLIDE_JITTER_X,
-        Math.min(from.y + GLIDE_HEIGHT, to.y) + Math.random() * GLIDE_JITTER_Y,
-        to.z,
-    );
-    const poly = Vec3.distance(from, outC1) + Vec3.distance(outC1, outC2) + Vec3.distance(outC2, to);
-    return (Vec3.distance(from, to) + poly) / 2;
-}
-
 /** The home arc's control point sits this far (0..1) up from the start, under the hive. */
 const HOME_RISE = 0.45;
 

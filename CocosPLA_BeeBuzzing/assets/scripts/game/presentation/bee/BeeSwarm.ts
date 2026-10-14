@@ -2,7 +2,7 @@ import { _decorator, Component, math, Vec3 } from 'cc';
 import { GameTime } from '../../application/GameTime';
 import { ModelKit } from '../rendering/ModelKit';
 import { SculptureView } from '../sculpture/SculptureView';
-import { bezier, buildApproachPath, cubicBezier, homeArc, launchCurve } from './BeeFlightPath';
+import { bezier, buildApproachPath, homeArc } from './BeeFlightPath';
 import { Bee, BeePool, poseBee } from './BeePool';
 
 const { ccclass } = _decorator;
@@ -79,11 +79,9 @@ export class BeeSwarm extends Component {
         bee.path.unitScale = this.sculpture.node.worldScale.x;
         bee.target = req.target;
         bee.phase = APPROACH;
-        bee.s = 0;
-        bee.timer = 0;
+        bee.s = bee.timer = 0;
         bee.start.set(req.from);
-        const pathStart = bee.path.pointWorld(0, this.sculpture.node.worldMatrix, this.tmp);
-        bee.leadLength = launchCurve(req.from, pathStart, this.sculpture.node.worldPosition, bee.arcCtrl, bee.arcCtrl2);
+        bee.launch.build(req.from, bee.path.pointWorld(0, this.sculpture.node.worldMatrix, this.tmp));
         bee.prev.set(req.from);
         bee.parts.root.setWorldPosition(req.from);
         bee.parts.root.setScale(1, 1, 1);
@@ -113,9 +111,11 @@ export class BeeSwarm extends Component {
         switch (bee.phase) {
             case APPROACH: {
                 bee.s += speed * dt;
+                // The route's end follows the rotating model, so its length is re-measured each frame.
+                bee.path.pointWorld(0, world, this.tmp);
+                bee.leadLength = bee.launch.length(bee.start, this.tmp);
                 if (bee.s < bee.leadLength) {
-                    bee.path.pointWorld(0, world, this.tmp);
-                    cubicBezier(this.pos, bee.start, bee.arcCtrl, bee.arcCtrl2, this.tmp, bee.s / bee.leadLength);
+                    bee.launch.sample(bee.start, this.tmp, bee.s, this.pos);
                     // Emerging from the hive: grows from small to full size over the first stretch.
                     const k = Math.min(1, EMERGE_MIN_SCALE + (1 - EMERGE_MIN_SCALE) * bee.s / EMERGE_DISTANCE);
                     bee.parts.root.setScale(k, k, k);
