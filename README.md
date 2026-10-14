@@ -1,73 +1,42 @@
-# CocosPlayableAdsTemplate
+# Bee Cube — Playable Ad (Cocos Creator 3.8.7)
 
-## Introduction
+A "peel the cube" playable: tap a hive, it jumps into a slot and fires bees that pull
+same-colored cubes out of a slowly rotating 3D voxel sculpture (teddy, 4003 cubes).
+Hidden inner layers open up as the outside is peeled away. Drag to rotate the sculpture,
+X2 SPEED to speed up. Win = every cube removed; lose = every slot taken by hives that can
+no longer reach any cube from any angle. Win / Lose / CTA open the store.
 
-This project is designed to help you easily set up a playable ads for mutil platform. Follow the instructions below to get started.
+## Run
 
-After create new playable ads game project from this template, please:
+1. Open `CocosPLA_BeeBuzzing/` with Cocos Creator **3.8.7**, open `assets/scene/MainScene`.
+2. Press Preview. The gameplay boots itself (`assets/scripts/game/BeeGameBootstrap.ts`).
 
-### In your project
+## Build (single HTML per ad network)
 
-1. On Windows, run `SetupProject.bat` as Administrator. On macOS, run:
+Close the editor, then:
 
 ```bash
-./SetupProject.sh
+./ci/build-cocos.sh
 ```
 
-<img width="234" alt="image" src="https://user-images.githubusercontent.com/9598614/219407739-964fae3d-e693-447b-bb8b-719d60ceaf86.png">
+Outputs `CocosPLA_BeeBuzzing/build/super-html/**` (single-file HTML / ZIP per network).
 
-2. You will see this ternimal windows, enter to continue
+## Tests
 
-### In your project
-
-## Step 1: Add Condition in IsChangeToLinkStore Method
-
-1. Setup  `GameManager.instance.SetupManagerInit();` on `Onload()` method in your class.
-2. Locate the `IsChangeToLinkStore()` method.
-3. Add your custom condition within the method.
-
-Example:
-
-```typescript
-
-protected onLoad(): void {
-    GameManager.instance.SetupManagerInit();
-}
-
-protected update(dt: number): void {
-    GameEndHandler.StoreGameChanging(this.IsChangeToLinkStore());
-}
-
-public IsChangeToLinkStore(): boolean {
-    // Your custom condition here
-    if (/* your condition */) {
-        return true;
-    }
-    return false;
-}
+```bash
+cd CocosPLA_BeeBuzzing/tools/game-logic-tests && npm install && npm test && npm run typecheck
 ```
 
-## Step 2: Change SRORE_LINK, Audio and Effect constant
+## Tools
 
-1. Open the file `.\constant.ts`.
-2. Modify the `SRORE_LINK` , `AUDIO_NAME` and `EFFECT_NAME` variables to your variables.
+| Tool | Purpose |
+|---|---|
+| `tools/level-compactor` | Raw editor level JSON (780 KB) → validated compact level (15.5 KB) |
+| `tools/asset-optimizer` | Palette-quantizes PNG sprites in place (keeps Cocos meta uuids) |
+| `tools/optimize-size` | Post-build size analyzer (template) |
 
-Example:
+## Docs
 
-```typescript
-export class Constant {
-    static SRORE_LINK = {
-        ANDROID_LINK: 'https://play.google.com/',
-        IOS_LINK: 'https://apps.apple.com/',
-    }
-
-    static AUDIO_NAME = {
-        MUSIC_TEST: 'music_ex',     
-        SOUND_TEST: 'sound_ex',  
-    }
-
-    static EFFECT_NAME = {
-        EFFECT_TEST: 'effect_ex' 
-    }
-}
-```
+- [Gameplay architecture](docs/bee-cube-architecture.md) — layers, pathfinding, rendering
+- [Optimization report](docs/optimization-report.md) — build size and runtime performance
+- [Template guide](CocosPLA_BeeBuzzing/README.md) — parameter system, SDK adapters, CTA
