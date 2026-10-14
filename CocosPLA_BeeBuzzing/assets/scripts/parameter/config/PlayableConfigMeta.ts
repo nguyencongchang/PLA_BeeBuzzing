@@ -34,6 +34,55 @@ export const PlayableConfigMeta: Record<keyof typeof PlayableConfig, ParameterMe
         ],
     },
 
+    SlotCount: {
+        description: "Số ô chờ (slot) mà tổ ong nhảy lên khi được chạm. Ít slot = khó hơn, dễ bế tắc hơn.",
+        aliases: ["slot", "ô chờ", "băng chuyền", "số slot"],
+        aiHints: ["Áp dụng khi màn chơi bắt đầu.", "5 là mặc định; 3 rất khó, 7 rất dễ."],
+        examples: [{ prompt: "Làm game dễ hơn", changes: ["SlotCount = 6"] }],
+    },
+
+    MaxTurns: {
+        description: "Số lần ong được rẽ 90° khi tìm đường rút ô ra phía camera. Nhiều lượt rẽ = nhiều ô bắn được hơn.",
+        aliases: ["rẽ góc", "pathfinding", "tìm đường", "turns"],
+        aiHints: ["Áp dụng khi màn chơi bắt đầu.", "0 = chỉ bắn ô lộ thẳng ra camera; 2 là mặc định."],
+        examples: [{ prompt: "Cho ong luồn lách giỏi hơn", changes: ["MaxTurns = 3"] }],
+    },
+
+    FireInterval: {
+        description: "Khoảng cách (giây) giữa 2 con ong của cùng một tổ — quyết định tốc độ gỡ khối.",
+        aliases: ["tốc độ bắn", "fire rate", "nhịp bắn"],
+        aiHints: ["Áp dụng ngay.", "Giảm giá trị = bắn nhanh hơn, màn chơi ngắn hơn."],
+        examples: [{ prompt: "Bắn nhanh hơn", changes: ["FireInterval = 0.03"] }],
+    },
+
+    BeeSpeed: {
+        description: "Tốc độ bay của ong (đơn vị thế giới / giây).",
+        aliases: ["tốc độ ong", "bee speed"],
+        aiHints: ["Áp dụng ngay."],
+        examples: [{ prompt: "Ong bay chậm lại cho dễ nhìn", changes: ["BeeSpeed = 10"] }],
+    },
+
+    AutoRotateSpeed: {
+        description: "Tốc độ tự xoay chậm của mô hình khi người chơi không kéo (độ / giây).",
+        aliases: ["tự xoay", "auto rotate", "xoay mô hình"],
+        aiHints: ["Áp dụng ngay.", "0 tắt tự xoay."],
+        examples: [{ prompt: "Tắt tự xoay", changes: ["AutoRotateSpeed = 0"] }],
+    },
+
+    InitialTilt: {
+        description: "Góc nghiêng ban đầu của mô hình về phía camera (độ) — nghiêng nhiều thì thấy mặt trên rõ hơn.",
+        aliases: ["nghiêng", "tilt", "góc nhìn mô hình"],
+        aiHints: ["Áp dụng khi màn chơi bắt đầu."],
+        examples: [{ prompt: "Nhìn mô hình từ trên xuống nhiều hơn", changes: ["InitialTilt = 40"] }],
+    },
+
+    SpeedButton: {
+        description: "Hiện nút X2 SPEED để người chơi tăng tốc màn chơi.",
+        aliases: ["x2", "tăng tốc", "speed button"],
+        aiHints: ["Áp dụng khi màn chơi bắt đầu."],
+        examples: [{ prompt: "Ẩn nút tăng tốc", changes: ["SpeedButton = false"] }],
+    },
+
     RedirectAfterClicks: {
         description: "Chuyển hướng sớm: sau N lần chạm trong game thì tự mở store (không cần bấm CTA).",
         aliases: ["redirect", "chuyển hướng sớm", "auto redirect", "tự mở store"],

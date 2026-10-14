@@ -12,6 +12,7 @@ import {
     replaceParameterAudioFromResources
 } from "db://assets/PlayableParamterTool/assetParameterUtils/ParameterReplacedAssetsHandler";
 import {LoadingView} from "db://assets/scripts/UI/LoadingView";
+import {bindGameplayParameters} from "db://assets/scripts/game/application/GameplayParameterBinding";
 
 const {ccclass, property} = _decorator;
 
@@ -100,6 +101,9 @@ export class ParameterController extends Component {
         PlayableConfig.SxfVolume.onUpdate = (data: typeof PlayableConfig.SxfVolume) => {
             AudioService.instance.setSfxVolume(data.default);
         }
+
+        // Bee Cube gameplay tunables
+        bindGameplayParameters();
 
         // Audio parameters - Update AudioContainer when audio params change
         this.setupAudioParamUpdates();

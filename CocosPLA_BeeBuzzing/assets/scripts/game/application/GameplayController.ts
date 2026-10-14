@@ -99,6 +99,9 @@ export class GameplayController extends Component {
     update(dt: number): void {
         if (!this.running || this.isFinished) return;
         const sdt = GameTime.scaled(dt);
+        // Live-tunable parameters (dashboard updates apply immediately).
+        this.d.swarm.beeSpeed = this.d.config.beeSpeed;
+        this.d.rotator.autoRotateSpeed = this.d.config.autoRotateSpeed;
         this.solveCooldown -= sdt;
         this.refreshReachability(false);
         this.fireActiveHives(sdt);

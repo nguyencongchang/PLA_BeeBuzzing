@@ -11,6 +11,7 @@ import {
     UINodeParameter,
     NodeParameter
 } from "db://assets/scripts/parameter/config/CustomParameter";
+import {DEFAULT_GAMEPLAY_CONFIG} from "db://assets/scripts/game/application/GameplayConfig";
 
 export const CURRENT_SDK = SdkType.THE_ONE;
 
@@ -19,6 +20,7 @@ export const CURRENT_SDK = SdkType.THE_ONE;
  */
 const Categories = {
     Default: "Default",
+    Gameplay: "Gameplay",
     Audio: "Audio",
     GamePlayUI: "GamePlayUI",
     CTA: "CTA",
@@ -44,6 +46,15 @@ export const PlayableConfig = {
         new BooleanParameter("Active", false),
         new NumberParameter("Count", 3)
     ), Categories.Default),
+
+    // === Gameplay (Bee Cube) — defaults come from GameplayConfig (SSOT) ===
+    SlotCount: new RangeParameter("Slot Count", DEFAULT_GAMEPLAY_CONFIG.slotCount, {min: 3, max: 7, step: 1}, Categories.Gameplay),
+    MaxTurns: new RangeParameter("Bee Max 90° Turns", DEFAULT_GAMEPLAY_CONFIG.maxTurns, {min: 0, max: 4, step: 1}, Categories.Gameplay),
+    FireInterval: new RangeParameter("Fire Interval (s)", DEFAULT_GAMEPLAY_CONFIG.fireInterval, {min: 0.02, max: 0.3, step: 0.01}, Categories.Gameplay),
+    BeeSpeed: new RangeParameter("Bee Speed", DEFAULT_GAMEPLAY_CONFIG.beeSpeed, {min: 6, max: 30, step: 1}, Categories.Gameplay),
+    AutoRotateSpeed: new RangeParameter("Auto Rotate Speed", DEFAULT_GAMEPLAY_CONFIG.autoRotateSpeed, {min: 0, max: 40, step: 1}, Categories.Gameplay),
+    InitialTilt: new RangeParameter("Initial Tilt", DEFAULT_GAMEPLAY_CONFIG.initialTilt, {min: -30, max: 60, step: 1}, Categories.Gameplay),
+    SpeedButton: new BooleanParameter("X2 Speed Button", DEFAULT_GAMEPLAY_CONFIG.speedButtonEnabled, Categories.Gameplay),
 
     MusicVolume: new RangeParameter("Music Volume", 0.5, {min: 0, max: 1, step: 0.1}, Categories.Default),
     SxfVolume: new RangeParameter("SFX Volume", 0.5, {min: 0, max: 1, step: 0.1}, Categories.Default),

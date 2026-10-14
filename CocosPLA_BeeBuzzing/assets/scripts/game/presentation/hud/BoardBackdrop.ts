@@ -10,6 +10,8 @@ const TRAY_COLOR = new Color(10, 14, 40, 150);
 const SLOT_BAR_COLOR = new Color(255, 190, 60, 60);
 const LEAF_ASPECT = 302 / 936;
 const BG_COLOR = new Color(27, 31, 69, 255);
+/** The tile pattern is busy at full strength; blend it over the clear color. */
+const TILE_TINT = new Color(255, 255, 255, 90);
 
 export interface BackdropSprites {
     readonly tile: SpriteFrame;
@@ -62,6 +64,7 @@ export class BoardBackdrop extends Component {
 
         const tile = sprite(this.node, 'Tile', sprites.tile, 100, 100);
         tile.type = Sprite.Type.TILED;
+        tile.color = TILE_TINT;
         const tw = tile.node.addComponent(Widget);
         tw.isAlignTop = tw.isAlignBottom = tw.isAlignLeft = tw.isAlignRight = true;
         tw.top = tw.bottom = tw.left = tw.right = 0;
