@@ -12,10 +12,10 @@ This is a monorepo with 5 git submodules:
 
 | Path | Purpose |
 |------|---------|
-| `CocosPlayableAdsTemplate/` | Main Cocos Creator project |
-| `CocosPlayableAdsTemplate/assets/PLAGameFoundation/` | Shared game framework (SignalBus, AudioService, InputService, ObjectPool, FSM, AsyncTask) |
-| `CocosPlayableAdsTemplate/assets/PlayableParamterTool/` | Parameter system & SDK abstraction (TCMPlay, Voodoo) |
-| `CocosPlayableAdsTemplate/tools/optimize-size/` | Post-build file size analyzer (Express app on port 3456) |
+| `CocosPLA_BeeBuzzing/` | Main Cocos Creator project |
+| `CocosPLA_BeeBuzzing/assets/PLAGameFoundation/` | Shared game framework (SignalBus, AudioService, InputService, ObjectPool, FSM, AsyncTask) |
+| `CocosPLA_BeeBuzzing/assets/PlayableParamterTool/` | Parameter system & SDK abstraction (TCMPlay, Voodoo) |
+| `CocosPLA_BeeBuzzing/tools/optimize-size/` | Post-build file size analyzer (Express app on port 3456) |
 | `ConfigPath/` | Jenkins build config templates with placeholder tokens |
 
 **Note:** `PlayableParamterTool` has a typo in the name ("Paramter") - this is intentional for backward compatibility.
@@ -29,7 +29,7 @@ This is a monorepo with 5 git submodules:
 SetupProject.bat   # Renames project, re-adds submodules, npm install
 
 # Size analysis tool (after building)
-cd CocosPlayableAdsTemplate/tools/optimize-size && npm start
+cd CocosPLA_BeeBuzzing/tools/optimize-size && npm start
 # Opens http://localhost:3456
 
 # Jenkins CI (automated)
@@ -109,7 +109,7 @@ RedirectParameter (active, count)
 
 ### Adding Audio
 
-1. Place audio file in `CocosPlayableAdsTemplate/assets/resources/audio/`
+1. Place audio file in `CocosPLA_BeeBuzzing/assets/resources/audio/`
 2. Add name constant to `constant/constant.ts` -> `AUDIO_NAME`
 3. Play via `AudioService.instance.playMusic(name)` or `AudioService.instance.playSFX(name)`
 
