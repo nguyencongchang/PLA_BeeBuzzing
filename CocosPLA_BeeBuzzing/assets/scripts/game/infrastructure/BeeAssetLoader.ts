@@ -15,6 +15,8 @@ export interface BackdropSprites {
     readonly tile: SpriteFrame;
     readonly leaves: SpriteFrame;
     readonly hive: SpriteFrame;
+    /** Same hive with the entrance cut out, drawn in front of the bees. */
+    readonly hiveFront: SpriteFrame;
     readonly slot: SpriteFrame;
 }
 
@@ -40,10 +42,10 @@ function optional<T>(what: string, promise: Promise<T>): Promise<T | null> {
 }
 
 async function loadBackdropSprites(): Promise<BackdropSprites> {
-    const [tile, leaves, hive, slot] = await Promise.all(
-        ['dark-bg', 'leaf-border', 'hive-hanging', 'slot'].map((n) => loadSpriteFrame(`${SPRITES}/${n}`)),
+    const [tile, leaves, hive, hiveFront, slot] = await Promise.all(
+        ['dark-bg', 'leaf-border', 'hive-hanging', 'hive-hanging-front', 'slot'].map((n) => loadSpriteFrame(`${SPRITES}/${n}`)),
     );
-    return { tile, leaves, hive, slot };
+    return { tile, leaves, hive, hiveFront, slot };
 }
 
 /** Loads everything the level needs from `resources/bee` in parallel. Required assets throw. */

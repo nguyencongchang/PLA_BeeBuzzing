@@ -125,9 +125,8 @@ export function bezierLength(a: Vec3, c: Vec3, b: Vec3): number {
 /** Sideways bulge / lift (world units) of the slot → sculpture arc, so streams fan out like a fountain. */
 const ARC_BULGE = 1.7;
 const ARC_LIFT = 0.8;
-/** Bulge of the sculpture → hive flight. */
-const HOME_BULGE = 1.1;
-const HOME_LIFT = 0.5;
+/** The home arc's control point sits this far (0..1) up from the start, under the hive. */
+const HOME_RISE = 0.45;
 
 /**
  * Control point of the slot → path-start arc: out sideways (away from the sculpture's
@@ -141,11 +140,12 @@ export function launchArc(from: Vec3, to: Vec3, center: Vec3, outCtrl: Vec3): nu
     return bezierLength(from, outCtrl, to);
 }
 
-/** Control point of the flight home to the hive entrance. Returns the arc length estimate. */
+/**
+ * Flight home: curves over to directly under the hive, then rises vertically through the
+ * entrance (control point straight below the target → vertical final tangent, as in the
+ * reference). Returns the arc length estimate.
+ */
 export function homeArc(from: Vec3, to: Vec3, outCtrl: Vec3): number {
-    const side = Math.sign(from.x - to.x) || 1;
-    Vec3.lerp(outCtrl, from, to, 0.5);
-    outCtrl.x += side * HOME_BULGE;
-    outCtrl.y += HOME_LIFT;
+    outCtrl.set(to.x, from.y + (to.y - from.y) * HOME_RISE, (from.z + to.z) / 2);
     return bezierLength(from, outCtrl, to);
 }

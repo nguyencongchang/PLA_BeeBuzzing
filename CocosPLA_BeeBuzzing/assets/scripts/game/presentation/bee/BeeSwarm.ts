@@ -3,7 +3,7 @@ import { GameTime } from '../../application/GameTime';
 import { ModelKit } from '../rendering/ModelKit';
 import { SculptureView } from '../sculpture/SculptureView';
 import { bezier, buildApproachPath, homeArc, launchArc } from './BeeFlightPath';
-import { Bee, BeePool } from './BeePool';
+import { Bee, BeePool, poseBee } from './BeePool';
 
 const { ccclass } = _decorator;
 
@@ -16,13 +16,13 @@ const EXIT_RUNWAY_CELLS = 3;
 /** Bee hovers this far (cells) in front of the cube face it grabs. */
 const FACE_HOVER_CELLS = 0.75;
 const CUBE_TRAIL_CELLS = 0.8;
-const FLAP_SPEED = 48;
-const FLAP_ANGLE = 42;
 /** Keeps flight readable even if a remote parameter payload contains an older speed. */
 const MAX_BEE_FLIGHT_SPEED = 3;
-/** Fraction of the home flight spent shrinking into the hive entrance. */
-const ENTER_FRACTION = 0.22;
-const ENTER_SCALE = 0.25;
+/** Fraction of the home flight spent shrinking as the bee disappears inside the hive. */
+const ENTER_FRACTION = 0.15;
+const ENTER_SCALE = 0.7;
+/** How far past the entrance (world units, upward) bees fly: inside, behind the front layer. */
+const ENTER_DEPTH = 0.35;
 /** Fallback hive entrance (swarm-local) when no backdrop provides one. */
 const DEFAULT_HIVE = new Vec3(0, 6.2, 0);
 
@@ -41,6 +41,8 @@ export interface LaunchRequest {
 @ccclass('BeeSwarm')
 export class BeeSwarm extends Component {
     onGrab: (target: number) => void = () => undefined;
+    /** A bee carried its cube inside the hive. */
+    onHome: () => void = () => undefined;
     /** World position of the hive entrance bees carry cubes into (set by the backdrop). */
     hiveEntrance: (out: Vec3) => Vec3 = (out) => Vec3.transformMat4(out, DEFAULT_HIVE, this.node.worldMatrix);
     beeSpeed = MAX_BEE_FLIGHT_SPEED;
@@ -150,7 +152,8 @@ export class BeeSwarm extends Component {
                 break;
             }
             case LEAVE: {
-                // Fly home to the hive carrying the cube, shrinking into the entrance at the end.
+                // Fly home carrying the cube, up through the entrance into the hive (the front
+                // hive layer hides it once inside), shrinking slightly at the very end.
                 const t = math.clamp01((bee.timer * speed) / bee.s);
                 bezier(this.pos, bee.leaveFrom, bee.leaveCtrl, bee.leaveTo, t * (2 - t));
                 const k = t < 1 - ENTER_FRACTION ? 1 : math.lerp(1, ENTER_SCALE, (t - 1 + ENTER_FRACTION) / ENTER_FRACTION);
@@ -158,36 +161,23 @@ export class BeeSwarm extends Component {
                 Vec3.scaleAndAdd(this.tmp, this.pos, Vec3.UNIT_Y, -0.14 * k);
                 bee.cube!.setWorldPosition(this.tmp);
                 bee.cube!.setScale(this.pool.cubeScale * k, this.pool.cubeScale * k, this.pool.cubeScale * k);
-                if (t >= 1) return true;
+                if (t >= 1) {
+                    this.onHome();
+                    return true;
+                }
                 break;
             }
         }
 
-        this.animate(bee, dt);
+        poseBee(bee, this.pos, dt);
         return false;
     }
 
     private startHomeFlight(bee: Bee): void {
         bee.leaveFrom.set(this.pos);
-        bee.s = homeArc(bee.leaveFrom, this.hiveEntrance(bee.leaveTo), bee.leaveCtrl);
+        this.hiveEntrance(bee.leaveTo).y += ENTER_DEPTH;
+        bee.s = homeArc(bee.leaveFrom, bee.leaveTo, bee.leaveCtrl);
         this.enter(bee, LEAVE);
-    }
-
-    private animate(bee: Bee, dt: number): void {
-        bee.flap += dt * FLAP_SPEED;
-        const angle = Math.sin(bee.flap) * FLAP_ANGLE;
-        bee.parts.wingL.setRotationFromEuler(0, 0, angle);
-        bee.parts.wingR.setRotationFromEuler(0, 0, -angle);
-        this.pos.y += Math.sin(bee.flap * 0.21) * 0.025;
-
-        const root = bee.parts.root;
-        root.setWorldPosition(this.pos);
-        Vec3.subtract(this.tmp, this.pos, bee.prev);
-        if (this.tmp.lengthSqr() > 1e-8) {
-            Vec3.add(this.tmp, this.pos, this.tmp);
-            root.lookAt(this.tmp);
-        }
-        bee.prev.set(this.pos);
     }
 
     private enter(bee: Bee, phase: number): void {

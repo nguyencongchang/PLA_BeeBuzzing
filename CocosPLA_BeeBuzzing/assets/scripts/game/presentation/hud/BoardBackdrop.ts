@@ -24,6 +24,8 @@ const HIVE_H = 182;
 const HIVE_TOP = -6;
 /** Entrance hole center, as a fraction of the sprite height below its center. */
 const HIVE_ENTRANCE_Y = 0.42;
+/** Anchored at its top edge so squash/wobble pivots where it hangs from the leaves. */
+const HIVE_ANCHOR_Y = 1;
 
 function sprite(parent: Node, name: string, frame: SpriteFrame, w: number, h: number): Sprite {
     const s = uiNode(name, parent, w, h).addComponent(Sprite);
@@ -89,6 +91,7 @@ export class BoardBackdrop extends Component {
 
         // Drawn after the leaves so it hangs in front of them.
         this.hive = sprite(this.node, 'HangingHive', sprites.hive, HIVE_W, HIVE_H).node;
+        this.hive.getComponent(UITransform)!.setAnchorPoint(0.5, HIVE_ANCHOR_Y);
         const hw = this.hive.addComponent(Widget);
         hw.isAlignTop = hw.isAlignHorizontalCenter = true;
         hw.top = HIVE_TOP;
@@ -104,13 +107,18 @@ export class BoardBackdrop extends Component {
         this.layout();
     }
 
+    /** The back hive layer (the front layer and the squash animation mirror it). */
+    get hiveNode(): Node | null {
+        return this.hive;
+    }
+
     /**
      * World position (board plane) of the hive entrance hole, or null without a BG camera.
      * The hive is UI on the BG canvas, so the hole is projected to screen and back into 3D.
      */
     hiveEntrance(out: Vec3): Vec3 | null {
         if (!this.hive || !this.bgCamera) return null;
-        this.tmp.set(0, -HIVE_H * HIVE_ENTRANCE_Y, 0);
+        this.tmp.set(0, -HIVE_H * (HIVE_ANCHOR_Y - 0.5 + HIVE_ENTRANCE_Y), 0);
         Vec3.transformMat4(this.tmp, this.tmp, this.hive.worldMatrix);
         this.bgCamera.worldToScreen(this.tmp, this.a);
         this.camera.screenPointToRay(this.a.x, this.a.y, this.ray);

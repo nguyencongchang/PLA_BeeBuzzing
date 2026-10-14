@@ -2,6 +2,10 @@ import { Node, Quat, Vec3 } from 'cc';
 import { BeeParts, ModelKit } from '../rendering/ModelKit';
 import { BeeFlightPath } from './BeeFlightPath';
 
+const FLAP_SPEED = 48;
+const FLAP_ANGLE = 42;
+const tmpHeading = new Vec3();
+
 /** Bee mesh head points to -Z after this yaw (lookAt aligns -Z with the heading). */
 const BEE_MODEL_YAW = 180;
 
@@ -82,4 +86,19 @@ export class BeePool {
         }
         this.freeBees.push(bee);
     }
+}
+
+/** Places a bee at `pos` (adds a slight bob), flaps its wings and turns its head along the motion. */
+export function poseBee(bee: Bee, pos: Vec3, dt: number): void {
+    bee.flap += dt * FLAP_SPEED;
+    const angle = Math.sin(bee.flap) * FLAP_ANGLE;
+    bee.parts.wingL.setRotationFromEuler(0, 0, angle);
+    bee.parts.wingR.setRotationFromEuler(0, 0, -angle);
+    pos.y += Math.sin(bee.flap * 0.21) * 0.025;
+
+    const root = bee.parts.root;
+    root.setWorldPosition(pos);
+    Vec3.subtract(tmpHeading, pos, bee.prev);
+    if (tmpHeading.lengthSqr() > 1e-8) root.lookAt(Vec3.add(tmpHeading, pos, tmpHeading));
+    bee.prev.set(pos);
 }

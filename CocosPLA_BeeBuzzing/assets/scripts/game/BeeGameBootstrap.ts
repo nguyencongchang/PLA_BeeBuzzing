@@ -21,6 +21,7 @@ import { GameInputRouter } from './presentation/input/GameInputRouter';
 import { GameHud } from './presentation/hud/GameHud';
 import { BoardBackdrop } from './presentation/hud/BoardBackdrop';
 import { IntroSequence } from './presentation/hud/IntroSequence';
+import { HiveNest } from './presentation/hud/HiveNest';
 import { ensureKeyLight, hideTemplateHud } from './presentation/SceneSetup';
 import { GameAudio } from './presentation/hud/GameAudio';
 
@@ -144,6 +145,12 @@ export class BeeGameBootstrap extends Component {
             view.init(this.camera, this.world, bgCamera, backdrop, board.slotCount, board.lineCount);
             const fallback = swarm.hiveEntrance;
             swarm.hiveEntrance = (out) => view.hiveEntrance(out) ?? fallback(out);
+            if (view.hiveNode) {
+                const nest = createChild(uiCanvas, 'BeeHiveFront', Layers.Enum.UI_2D).addComponent(HiveNest);
+                nest.node.setSiblingIndex(1);
+                nest.init(view.hiveNode, backdrop.hiveFront);
+                swarm.onHome = () => nest.onBeeArrived();
+            }
         }
         this.node.addComponent(GameAudio);
         hideTemplateHud();
