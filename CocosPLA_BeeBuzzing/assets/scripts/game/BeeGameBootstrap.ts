@@ -131,7 +131,7 @@ export class BeeGameBootstrap extends Component {
 
         const hud = createChild(uiCanvas, 'BeeHud', Layers.Enum.UI_2D).addComponent(GameHud);
         hud.node.setSiblingIndex(2);
-        hud.init({ font, config, levelNumber: 1 });
+        hud.init({ font, config });
 
         // After the loading screen: intro (sculpture assembles) → first-time tutorial → idle hints.
         const intro = new IntroSequence({ grid, board, materials, sculpture, camera: this.camera, worldRoot: this.world, uiCanvas, hand, font });
@@ -141,7 +141,7 @@ export class BeeGameBootstrap extends Component {
             const templateBg = bgCanvas.getChildByName('BG');
             if (templateBg) templateBg.active = false;
             const view = createChild(bgCanvas, 'BeeBackdrop', bgCanvas.layer).addComponent(BoardBackdrop);
-            view.init(this.camera, this.world, bgCamera, backdrop, board.slotCount);
+            view.init(this.camera, this.world, bgCamera, backdrop, board.slotCount, board.lineCount);
             const fallback = swarm.hiveEntrance;
             swarm.hiveEntrance = (out) => view.hiveEntrance(out) ?? fallback(out);
         }

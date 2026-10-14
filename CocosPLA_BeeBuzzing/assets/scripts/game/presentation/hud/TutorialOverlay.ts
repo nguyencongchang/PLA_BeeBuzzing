@@ -1,5 +1,6 @@
 import { _decorator, Camera, Color, Component, Graphics, Label, Node, Sprite, SpriteFrame, TTFFont, tween, UIOpacity, UITransform, Vec3, Widget } from 'cc';
 import { SignalBus } from 'db://assets/PLAGameFoundation/signalBus/SignalBus';
+import { UIScreenResolution } from 'db://assets/scripts/UIScreenResolution';
 import { HiveActivatedSignal } from '../../application/GameplaySignals';
 import { BOARD_LAYOUT, lineX, queuePosition } from '../hive/BoardLayout';
 import { uiNode } from './HudWidgets';
@@ -26,6 +27,10 @@ const FINGERTIP_OFFSET = new Vec3(55, -70, 0);
 export class TutorialOverlay extends Component {
     private onDone: () => void = () => undefined;
     private closing = false;
+    private dim: Graphics = null!;
+    private dimKey = '';
+    private readonly holeLo = new Vec3();
+    private readonly holeHi = new Vec3();
     private readonly tmp = new Vec3();
 
     show(camera: Camera, worldRoot: Node, lineCount: number, hand: SpriteFrame, font: TTFFont | null, onDone: () => void): void {
@@ -69,10 +74,30 @@ export class TutorialOverlay extends Component {
         SignalBus.instance.unsubscribe(HiveActivatedSignal, this.close);
     }
 
+    /** Dim layer sized to the real screen by UIScreenResolution (covers letterbox areas too). */
     private drawDim(lo: Vec3, hi: Vec3): void {
-        const size = this.node.getComponent(UITransform)!;
+        this.holeLo.set(lo);
+        this.holeHi.set(hi);
+        const node = uiNode('Dim', this.node);
+        node.addComponent(UIScreenResolution);
+        this.dim = node.addComponent(Graphics);
+        this.redrawDim();
+    }
+
+    /** UIScreenResolution may resize the dim layer after creation; redraw when it does. */
+    lateUpdate(): void {
+        if (this.dim) this.redrawDim();
+    }
+
+    private redrawDim(): void {
+        const size = this.dim.node.getComponent(UITransform)!;
         const w = size.width, h = size.height;
-        const g = uiNode('Dim', this.node).addComponent(Graphics);
+        const key = `${w}x${h}`;
+        if (key === this.dimKey) return;
+        this.dimKey = key;
+        const lo = this.holeLo, hi = this.holeHi;
+        const g = this.dim;
+        g.clear();
         g.fillColor = DIM;
         // Four rects around the hole keep the highlighted hives undimmed.
         g.rect(-w / 2, hi.y, w, h / 2 - hi.y);

@@ -28,7 +28,7 @@ export const DEFAULT_GAMEPLAY_CONFIG: Readonly<GameplayConfig> = {
     maxTurns: 2,
     facingThreshold: 0.3,
     fireInterval: 0.05,
-    beeSpeed: 8,
+    beeSpeed: 4,
     maxBeesInFlight: 160,
     autoRotateSpeed: 8,
     initialTilt: 10,

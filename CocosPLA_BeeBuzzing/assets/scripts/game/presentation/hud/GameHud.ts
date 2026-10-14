@@ -7,36 +7,27 @@ import { drawRoundRect, uiLabel, uiNode } from './HudWidgets';
 
 const { ccclass } = _decorator;
 
-/** Top HUD row (as in the reference): "Level N" pill left, "▶▶ 2x" pill right. */
+/** Top HUD row: "▶▶ 2x" pill on the right. */
 const ROW_TOP = 205;
 const SIDE_MARGIN = 32;
 const PILL_H = 64;
-const LEVEL_W = 200;
 const SPEED_W = 170;
-const LEVEL_BG = new Color(40, 70, 110, 150);
 const SPEED_OFF = new Color(46, 196, 64, 255);
 const SPEED_ON = new Color(255, 140, 30, 255);
 
 export interface HudDeps {
     readonly font: TTFFont | null;
     readonly config: GameplayConfig;
-    readonly levelNumber: number;
 }
 
-function pinTopCorner(node: Node, left: boolean): void {
+function pinTopRight(node: Node): void {
     const w = node.addComponent(Widget);
-    w.isAlignTop = true;
+    w.isAlignTop = w.isAlignRight = true;
     w.top = ROW_TOP;
-    if (left) {
-        w.isAlignLeft = true;
-        w.left = SIDE_MARGIN;
-    } else {
-        w.isAlignRight = true;
-        w.right = SIDE_MARGIN;
-    }
+    w.right = SIDE_MARGIN;
 }
 
-/** Level pill, X2 SPEED toggle and the "drag to rotate" hint. */
+/** X2 SPEED toggle and the "drag to rotate" hint. */
 @ccclass('GameHud')
 export class GameHud extends Component {
     private hint: Node = null!;
@@ -47,11 +38,6 @@ export class GameHud extends Component {
         const widget = this.node.addComponent(Widget);
         widget.isAlignTop = widget.isAlignBottom = widget.isAlignLeft = widget.isAlignRight = true;
         widget.top = widget.bottom = widget.left = widget.right = 0;
-
-        const level = uiNode('LevelPill', this.node, LEVEL_W, PILL_H);
-        pinTopCorner(level, true);
-        drawRoundRect(level.addComponent(Graphics), LEVEL_W, PILL_H, PILL_H / 2, LEVEL_BG);
-        uiLabel(level, `Level ${d.levelNumber}`, 34, d.font);
 
         if (d.config.speedButtonEnabled) this.buildSpeedButton(d.font);
         this.buildHint(d.font);
@@ -67,7 +53,7 @@ export class GameHud extends Component {
 
     private buildSpeedButton(font: TTFFont | null): void {
         const btn = uiNode('SpeedButton', this.node, SPEED_W, PILL_H);
-        pinTopCorner(btn, false);
+        pinTopRight(btn);
         this.speedBg = btn.addComponent(Graphics);
         this.speedLabel = uiLabel(btn, '', 34, font);
         this.speedLabel.node.setPosition(22, 0);

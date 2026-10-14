@@ -156,8 +156,8 @@ export class HiveBoardView extends Component {
         label.lineHeight = LABEL_FONT_SIZE;
         label.color = Color.WHITE;
         label.enableOutline = true;
-        label.outlineColor = new Color(40, 25, 10, 255);
-        label.outlineWidth = 4;
+        label.outlineColor = Color.BLACK;
+        label.outlineWidth = 5;
         return label;
     }
 }

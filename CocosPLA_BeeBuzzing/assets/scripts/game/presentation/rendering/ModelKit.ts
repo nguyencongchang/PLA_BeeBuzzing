@@ -14,6 +14,10 @@ const CUBE_MESH_SIZE = 1.05;
 const WING_HEX = '#FFFFFFB0';
 /** Queue hives behind the front one are drawn darker, as in the reference. */
 const QUEUED_HIVE_SHADE = 0.55;
+/** Black hive outline thickness (xy scale of the hull copy) and how far behind it sits. */
+const HIVE_OUTLINE_SCALE = 1.12;
+const HIVE_OUTLINE_DEPTH = 0.06;
+const OUTLINE_HEX = '#000000';
 const STRIPE_HEX = '#1A1A1A';
 
 export interface BeeParts {
@@ -102,12 +106,19 @@ export class ModelKit {
         const s = HIVE_WIDTH / HIVE_MESH_WIDTH;
         mesh.setScale(s, s, s);
         addRenderer(mesh, this.hiveMesh).setSharedMaterial(this.materials.gameColor(color), 0);
+
+        // Cartoon outline: a black, slightly larger copy pushed behind the hive (inverted-hull style).
+        const outline = new Node('Outline');
+        outline.setParent(node);
+        outline.setScale(s * HIVE_OUTLINE_SCALE, s * HIVE_OUTLINE_SCALE, s);
+        outline.setPosition(0, 0, -HIVE_OUTLINE_DEPTH);
+        addRenderer(outline, this.hiveMesh).setSharedMaterial(this.materials.solid(OUTLINE_HEX), 0);
         return node;
     }
 
     /** Front hives (tappable) at full color, hives waiting behind them dimmed. */
     paintHive(hive: Node, color: number, dimmed: boolean): void {
-        const renderer = hive.getComponentInChildren(MeshRenderer)!;
+        const renderer = hive.getChildByName('Hexa')!.getComponent(MeshRenderer)!;
         renderer.setSharedMaterial(this.materials.gameColor(color, { shade: dimmed ? QUEUED_HIVE_SHADE : 1 }), 0);
     }
 
