@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bee Level Viewer</title>
+<style>
+  :root { --bg:#14162b; --panel:#1d2040; --line:#2d3160; --text:#e8e9f5; --muted:#9a9cc0; --accent:#ffc43d; --ok:#4ade80; }
+  * { box-sizing: border-box; }
+  body { margin:0; height:100vh; display:flex; background:var(--bg); color:var(--text); font:14px/1.4 system-ui, sans-serif; }
+  aside { width:300px; display:flex; flex-direction:column; border-right:1px solid var(--line); background:var(--panel); }
+  aside header { padding:12px; display:flex; flex-direction:column; gap:8px; border-bottom:1px solid var(--line); }
+  aside h1 { margin:0; font-size:16px; }
+  input, select, button { font:inherit; color:var(--text); background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:7px 10px; }
+  button { cursor:pointer; background:#2b2f5e; }
+  button:hover { border-color:var(--accent); }
+  button.primary { background:var(--accent); color:#1b1400; border-color:var(--accent); font-weight:600; }
+  #list { flex:1; overflow:auto; margin:0; padding:6px; list-style:none; }
+  #list li { padding:8px 10px; border-radius:8px; cursor:pointer; display:flex; justify-content:space-between; gap:8px; }
+  #list li:hover { background:#262a52; }
+  #list li.sel { background:#363b78; }
+  #list .n { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #list .c { color:var(--muted); font-variant-numeric:tabular-nums; flex:none; }
+  main { flex:1; display:flex; flex-direction:column; min-width:0; }
+  #bar { padding:12px 16px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; border-bottom:1px solid var(--line); }
+  #title { font-size:18px; font-weight:700; margin-right:auto; }
+  .stats { color:var(--muted); width:100%; }
+  #stage { flex:1; position:relative; min-height:0; }
+  #stage canvas { display:block; width:100%; height:100%; cursor:grab; }
+  #hint { position:absolute; left:12px; bottom:10px; color:var(--muted); font-size:12px; }
+  #bottom { display:flex; gap:24px; padding:12px 16px; border-top:1px solid var(--line); overflow:auto; max-height:34vh; }
+  #bottom h2 { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:0 0 8px; }
+  .swatches { display:flex; flex-wrap:wrap; gap:6px; max-width:420px; }
+  .sw { display:flex; align-items:center; gap:6px; padding:3px 8px 3px 3px; background:var(--bg); border-radius:6px; font-size:12px; }
+  .sw i { width:16px; height:16px; border-radius:4px; display:inline-block; }
+  .lines { display:flex; gap:6px; }
+  .lines div { display:flex; flex-direction:column; gap:4px; }
+  .hive { width:38px; height:24px; border-radius:6px; display:grid; place-items:center; font-size:11px; font-weight:700; color:#fff; text-shadow:0 1px 2px #000a; }
+  #toast { position:fixed; right:16px; bottom:16px; background:var(--ok); color:#06240f; padding:8px 14px; border-radius:8px; font-weight:600; opacity:0; transition:opacity .2s; }
+  #toast.show { opacity:1; }
+</style>
+</head>
+<body>
+<aside>
+  <header>
+    <h1>🐝 Bee Level Viewer</h1>
+    <input id="search" placeholder="Tìm level (vd: heart, 15, penguin)…">
+    <select id="sort">
+      <option value="order">Thứ tự level</option>
+      <option value="cubes">Ít cube trước</option>
+      <option value="cubes-desc">Nhiều cube trước</option>
+      <option value="colors">Ít màu trước</option>
+    </select>
+    <small id="count" style="color:var(--muted)"></small>
+  </header>
+  <ul id="list"></ul>
+</aside>
+<main>
+  <div id="bar">
+    <div id="title"></div>
+    <button class="primary" id="copyCompact" title="Dán đè vào assets/resources/bee/levels/teddy.level.json">Copy .level.json</button>
+    <button id="copyEditor" title="Định dạng editor, chạy qua compact-level.mjs">Copy editor JSON</button>
+    <button id="download">Tải .level.json</button>
+    <button id="reset">Góc mặc định</button>
+    <div class="stats" id="stats"></div>
+  </div>
+  <div id="stage"><div id="hint">Kéo để xoay · cuộn để zoom · ↑/↓ để đổi level</div></div>
+  <div id="bottom">
+    <section><h2>Màu cube</h2><div class="swatches" id="swatches"></div></section>
+    <section><h2>Hàng tổ ong (màu · số ong)</h2><div class="lines" id="lines"></div></section>
+  </div>
+</main>
+<div id="toast"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const DATA = /*__LEVEL_DATA__*/null;
+const $ = (id) => document.getElementById(id);
+const colorOf = (c) => DATA.palette[c]?.hex ?? '#ff00ff';
+const nameOf = (c) => DATA.palette[c]?.name ?? `#${c}`;
+const levelOrder = (name) => parseInt(name, 10) || 1e9;
+let current = null, visible = [];
+
+/** Compact level → cubes [{x,y,z,color}] (cells: base64, value = color + 1, idx = x + W*(y + H*z)). */
+function decodeCubes(level) {
+  const [W, H] = level.size, bin = atob(level.cells), cubes = [];
+  for (let i = 0; i < bin.length; i++) {
+    const v = bin.charCodeAt(i);
+    if (v) cubes.push({ x: i % W, y: Math.floor(i / W) % H, z: Math.floor(i / (W * H)), color: v - 1 });
+  }
+  return cubes;
+}
+
+/** Rebuilds the editor-format JSON (input of compact-level.mjs) from the compact level. */
+function toEditorJson(entry) {
+  const c = entry.compact, queue = {};
+  const xyz = ([x, y, z]) => ({ x, y, z });
+  return {
+    Name: entry.name, GridSize: xyz(c.size), CellSize: c.cell, GridOrigin: xyz(c.origin), DefaultRotation: xyz(c.rot),
+    Cubes: decodeCubes(c).map((q) => ({ GridPosition: { x: q.x, y: q.y, z: q.z }, Color: q.color, Health: 1 })),
+    LineCount: c.lines,
+    ShooterSpawnData: c.hives.map(([line, color, ammo]) => ({
+      Color: color, Ammo: ammo, Line: line, Index: (queue[line] = (queue[line] ?? -1) + 1), ConnectionGroup: 0,
+      IsMystery: false, FrozenAmmo: 0, Tunnel: [], TunnelSlotCount: 1, SecondColor: -1, SecondAmmo: 0,
+    })),
+  };
+}
+
+// ---------- 3D view ----------
+const stage = $('stage');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+stage.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#1b1f45');
+const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 1000);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x404060, 0.75));
+const sun = new THREE.DirectionalLight(0xffffff, 0.6);
+sun.position.set(0.4, 1, 0.7);
+scene.add(sun);
+const pivot = new THREE.Group();
+scene.add(pivot);
+const box = new THREE.BoxGeometry(0.94, 0.94, 0.94);
+const material = new THREE.MeshLambertMaterial();
+let mesh = null, distance = 30, yaw = 0, pitch = 0;
+
+function showModel(entry) {
+  const c = entry.compact, cubes = decodeCubes(c), [W, H, D] = c.size;
+  if (mesh) { pivot.remove(mesh); mesh.dispose(); }
+  mesh = new THREE.InstancedMesh(box, material, cubes.length);
+  const m = new THREE.Matrix4(), col = new THREE.Color();
+  cubes.forEach((q, i) => {
+    m.makeTranslation(q.x - (W - 1) / 2, q.y - (H - 1) / 2, (D - 1) / 2 - q.z);
+    mesh.setMatrixAt(i, m);
+    mesh.setColorAt(i, col.set(colorOf(q.color)));
+  });
+  pivot.add(mesh);
+  distance = Math.max(W, H, D) * 2.6;
+  resetView();
+}
+function resetView() { yaw = 0.5; pitch = 0.25; }
+function frame() {
+  pivot.rotation.set(pitch, yaw, 0, 'XYZ');
+  camera.position.set(0, 0, distance);
+  camera.lookAt(0, 0, 0);
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+function resize() {
+  const { clientWidth: w, clientHeight: h } = stage;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / Math.max(1, h);
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage);
+let drag = null;
+renderer.domElement.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY }; renderer.domElement.setPointerCapture(e.pointerId); });
+renderer.domElement.addEventListener('pointermove', (e) => {
+  if (!drag) return;
+  yaw += (e.clientX - drag.x) * 0.01;
+  pitch = THREE.MathUtils.clamp(pitch + (e.clientY - drag.y) * 0.01, -1.5, 1.5);
+  drag = { x: e.clientX, y: e.clientY };
+});
+renderer.domElement.addEventListener('pointerup', () => { drag = null; });
+renderer.domElement.addEventListener('wheel', (e) => { e.preventDefault(); distance = Math.max(3, distance * (1 + Math.sign(e.deltaY) * 0.1)); }, { passive: false });
+
+// ---------- UI ----------
+function select(entry) {
+  current = entry;
+  const c = entry.compact, counts = {};
+  decodeCubes(c).forEach((q) => { counts[q.color] = (counts[q.color] ?? 0) + 1; });
+  $('title').textContent = entry.name;
+  $('stats').textContent = `${entry.cubes} cube · ${entry.colors} màu · ${entry.hives} tổ · ${c.lines} hàng · lưới ${c.size.join('×')} · cell ${c.cell} · nghiêng ${+c.rot[0].toFixed(1)}°`
+    + (entry.droppedHiveFeatures ? ` · ${entry.droppedHiveFeatures} tổ ghép/mystery đã chuyển thành tổ thường` : '');
+  $('swatches').innerHTML = Object.entries(counts).sort((a, b) => b[1] - a[1])
+    .map(([k, n]) => `<span class="sw"><i style="background:${colorOf(k)}"></i>${nameOf(k)} (${k}) · ${n}</span>`).join('');
+  const lines = Array.from({ length: c.lines }, () => []);
+  c.hives.forEach(([line, color, ammo]) => lines[line].push(`<span class="hive" style="background:${colorOf(color)}" title="${nameOf(color)}">${ammo}</span>`));
+  $('lines').innerHTML = lines.map((l) => `<div>${l.join('')}</div>`).join('');
+  document.querySelectorAll('#list li').forEach((li) => li.classList.toggle('sel', li.dataset.name === entry.name));
+  document.querySelector('#list li.sel')?.scrollIntoView({ block: 'nearest' });
+  history.replaceState(null, '', `#${encodeURIComponent(entry.name)}`);
+  showModel(entry);
+}
+
+function renderList() {
+  const q = $('search').value.trim().toLowerCase(), sort = $('sort').value;
+  visible = DATA.levels.filter((l) => l.name.toLowerCase().includes(q));
+  const by = { order: (a, b) => levelOrder(a.name) - levelOrder(b.name), cubes: (a, b) => a.cubes - b.cubes,
+    'cubes-desc': (a, b) => b.cubes - a.cubes, colors: (a, b) => a.colors - b.colors || a.cubes - b.cubes };
+  visible.sort(by[sort]);
+  $('list').innerHTML = visible.map((l) => `<li data-name="${l.name}"><span class="n">${l.name}</span><span class="c">${l.cubes} · ${l.colors}m</span></li>`).join('');
+  $('count').textContent = `${visible.length}/${DATA.levels.length} level dùng được · ${DATA.skipped.length} level bỏ qua (cơ chế đặc biệt)`;
+  if (current) document.querySelector(`#list li[data-name="${CSS.escape(current.name)}"]`)?.classList.add('sel');
+}
+
+async function copy(text, label) {
+  try { await navigator.clipboard.writeText(text); }
+  catch {
+    const ta = Object.assign(document.createElement('textarea'), { value: text });
+    document.body.append(ta); ta.select(); document.execCommand('copy'); ta.remove();
+  }
+  const t = $('toast'); t.textContent = `Đã copy ${label}`; t.classList.add('show');
+  clearTimeout(copy.timer); copy.timer = setTimeout(() => t.classList.remove('show'), 1400);
+}
+
+$('list').addEventListener('click', (e) => { const li = e.target.closest('li'); if (li) select(DATA.levels.find((l) => l.name === li.dataset.name)); });
+$('search').addEventListener('input', renderList);
+$('sort').addEventListener('change', renderList);
+$('copyCompact').onclick = () => copy(JSON.stringify(current.compact), `${current.name}.level.json`);
+$('copyEditor').onclick = () => copy(JSON.stringify(toEditorJson(current), null, 1), `editor JSON của ${current.name}`);
+$('download').onclick = () => {
+  const a = Object.assign(document.createElement('a'), { download: `${current.name}.level.json`,
+    href: URL.createObjectURL(new Blob([JSON.stringify(current.compact)], { type: 'application/json' })) });
+  a.click(); URL.revokeObjectURL(a.href);
+};
+$('reset').onclick = resetView;
+addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || !['ArrowUp', 'ArrowDown'].includes(e.key)) return;
+  e.preventDefault();
+  const i = visible.indexOf(current) + (e.key === 'ArrowDown' ? 1 : -1);
+  if (visible[i]) select(visible[i]);
+});
+
+renderList();
+const fromHash = DATA.levels.find((l) => l.name === decodeURIComponent(location.hash.slice(1)));
+select(fromHash ?? visible[0]);
+resize();
+frame();
+</script>
+</body>
+</html>
