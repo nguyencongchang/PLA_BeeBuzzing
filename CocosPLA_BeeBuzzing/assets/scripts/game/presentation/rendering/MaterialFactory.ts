@@ -1,4 +1,4 @@
-import { Color, EffectAsset, Material, Texture2D } from 'cc';
+import { Color, EffectAsset, gfx, Material, Texture2D } from 'cc';
 import { GAME_COLOR_HEX } from '../../infrastructure/GamePalette';
 
 const TECH_OPAQUE = 0;
@@ -10,6 +10,8 @@ export interface SolidMaterialOptions {
     shade?: number;
     transparent?: boolean;
     texture?: Texture2D | null;
+    /** Render back faces only (inverted-hull outlines). */
+    cullFront?: boolean;
 }
 
 /**
@@ -35,14 +37,14 @@ export class MaterialFactory {
     /** Single-color material keyed by hex color + options. */
     solid(hex: string, options: SolidMaterialOptions = {}): Material {
         const shade = options.shade ?? 1;
-        const key = `solid:${hex}:${options.edge ? 1 : 0}:${options.transparent ? 1 : 0}:${options.texture?.uuid ?? ''}:${shade}`;
+        const key = `solid:${hex}:${options.edge ? 1 : 0}:${options.transparent ? 1 : 0}:${options.texture?.uuid ?? ''}:${shade}:${options.cullFront ? 1 : 0}`;
         return this.getOrCreate(key, () => {
             const defines: Record<string, boolean> = { USE_INSTANCING: true };
             if (options.edge) defines.USE_EDGE = true;
             if (options.texture) defines.USE_TEXTURE = true;
             const color = new Color().fromHEX(hex);
             color.set(Math.round(color.r * shade), Math.round(color.g * shade), Math.round(color.b * shade), color.a);
-            const mat = this.create(options.transparent ? TECH_TRANSPARENT : TECH_OPAQUE, defines, color);
+            const mat = this.create(options.transparent ? TECH_TRANSPARENT : TECH_OPAQUE, defines, color, options.cullFront);
             if (options.texture) mat.setProperty('mainTexture', options.texture);
             return mat;
         });
@@ -64,9 +66,10 @@ export class MaterialFactory {
         return mat;
     }
 
-    private create(technique: number, defines: Record<string, boolean>, color: Color): Material {
+    private create(technique: number, defines: Record<string, boolean>, color: Color, cullFront = false): Material {
         const mat = new Material();
-        mat.initialize({ effectAsset: this.effect, technique, defines });
+        const states = cullFront ? { rasterizerState: { cullMode: gfx.CullMode.FRONT } } : undefined;
+        mat.initialize({ effectAsset: this.effect, technique, defines, states });
         mat.setProperty('mainColor', color);
         return mat;
     }

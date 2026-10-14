@@ -14,10 +14,16 @@ const CUBE_MESH_SIZE = 1.05;
 const WING_HEX = '#FFFFFFB0';
 /** Queue hives behind the front one are drawn darker, as in the reference. */
 const QUEUED_HIVE_SHADE = 0.55;
-/** Black hive outline thickness (xy scale of the hull copy) and how far behind it sits. */
-const HIVE_OUTLINE_SCALE = 1.12;
-const HIVE_OUTLINE_DEPTH = 0.06;
+/** Thin black silhouette outline: back faces of a slightly larger hull (inverted hull). */
+const HIVE_OUTLINE_SCALE = 1.05;
 const OUTLINE_HEX = '#000000';
+/** Soft drop shadow: translucent dark copy offset down-left, behind the hive. */
+const HIVE_SHADOW_OFFSET_X = -0.09;
+const HIVE_SHADOW_OFFSET_Y = -0.09;
+const HIVE_SHADOW_DEPTH = 0.1;
+const SHADOW_HEX = '#00000080';
+/** Hive mesh spans z 0..1 (mesh units); the hull is scaled around this center. */
+const HIVE_MESH_CENTER_Z = 0.5;
 const STRIPE_HEX = '#1A1A1A';
 
 export interface BeeParts {
@@ -107,12 +113,19 @@ export class ModelKit {
         mesh.setScale(s, s, s);
         addRenderer(mesh, this.hiveMesh).setSharedMaterial(this.materials.gameColor(color), 0);
 
-        // Cartoon outline: a black, slightly larger copy pushed behind the hive (inverted-hull style).
+        // Cartoon look: thin black silhouette outline + soft offset drop shadow.
+        const k = s * HIVE_OUTLINE_SCALE;
         const outline = new Node('Outline');
         outline.setParent(node);
-        outline.setScale(s * HIVE_OUTLINE_SCALE, s * HIVE_OUTLINE_SCALE, s);
-        outline.setPosition(0, 0, -HIVE_OUTLINE_DEPTH);
-        addRenderer(outline, this.hiveMesh).setSharedMaterial(this.materials.solid(OUTLINE_HEX), 0);
+        outline.setScale(k, k, k);
+        outline.setPosition(0, 0, (s - k) * HIVE_MESH_CENTER_Z); // keep the hull centered on the hive
+        addRenderer(outline, this.hiveMesh).setSharedMaterial(this.materials.solid(OUTLINE_HEX, { cullFront: true }), 0);
+
+        const shadow = new Node('Shadow');
+        shadow.setParent(node);
+        shadow.setScale(s, s, s);
+        shadow.setPosition(HIVE_SHADOW_OFFSET_X, HIVE_SHADOW_OFFSET_Y, -HIVE_SHADOW_DEPTH);
+        addRenderer(shadow, this.hiveMesh).setSharedMaterial(this.materials.solid(SHADOW_HEX, { transparent: true }), 0);
         return node;
     }
 
