@@ -58,8 +58,7 @@
 <main>
   <div id="bar">
     <div id="title"></div>
-    <button class="primary" id="copyCompact" title="Dán đè vào assets/resources/bee/levels/teddy.level.json">Copy .level.json</button>
-    <button id="copyEditor" title="Định dạng editor, chạy qua compact-level.mjs">Copy editor JSON</button>
+    <button class="primary" id="copyCompact" title="Dán vào param Level (.level.json) trên dashboard">Copy .level.json</button>
     <button id="download">Tải .level.json</button>
     <button id="reset">Góc mặc định</button>
     <div class="stats" id="stats"></div>
@@ -88,21 +87,6 @@ function decodeCubes(level) {
     if (v) cubes.push({ x: i % W, y: Math.floor(i / W) % H, z: Math.floor(i / (W * H)), color: v - 1 });
   }
   return cubes;
-}
-
-/** Rebuilds the editor-format JSON (input of compact-level.mjs) from the compact level. */
-function toEditorJson(entry) {
-  const c = entry.compact, queue = {};
-  const xyz = ([x, y, z]) => ({ x, y, z });
-  return {
-    Name: entry.name, GridSize: xyz(c.size), CellSize: c.cell, GridOrigin: xyz(c.origin), DefaultRotation: xyz(c.rot),
-    Cubes: decodeCubes(c).map((q) => ({ GridPosition: { x: q.x, y: q.y, z: q.z }, Color: q.color, Health: 1 })),
-    LineCount: c.lines,
-    ShooterSpawnData: c.hives.map(([line, color, ammo]) => ({
-      Color: color, Ammo: ammo, Line: line, Index: (queue[line] = (queue[line] ?? -1) + 1), ConnectionGroup: 0,
-      IsMystery: false, FrozenAmmo: 0, Tunnel: [], TunnelSlotCount: 1, SecondColor: -1, SecondAmmo: 0,
-    })),
-  };
 }
 
 // ---------- 3D view ----------
@@ -207,7 +191,6 @@ $('list').addEventListener('click', (e) => { const li = e.target.closest('li'); 
 $('search').addEventListener('input', renderList);
 $('sort').addEventListener('change', renderList);
 $('copyCompact').onclick = () => copy(JSON.stringify(current.compact), `${current.name}.level.json`);
-$('copyEditor').onclick = () => copy(JSON.stringify(toEditorJson(current), null, 1), `editor JSON của ${current.name}`);
 $('download').onclick = () => {
   const a = Object.assign(document.createElement('a'), { download: `${current.name}.level.json`,
     href: URL.createObjectURL(new Blob([JSON.stringify(current.compact)], { type: 'application/json' })) });
