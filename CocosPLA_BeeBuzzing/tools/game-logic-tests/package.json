@@ -1,0 +1,13 @@
+{
+  "name": "bee-cube-game-logic-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --import tsx --test test/*.test.ts",
+    "typecheck": "tsc -p ../../tsconfig.json --noEmit --skipLibCheck"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  }
+}
