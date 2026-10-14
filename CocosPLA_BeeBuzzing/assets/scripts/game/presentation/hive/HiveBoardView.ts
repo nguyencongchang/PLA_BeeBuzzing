@@ -10,7 +10,8 @@ const JUMP_HEIGHT = 1.1;
 const ADVANCE_DURATION = 0.22;
 const LABEL_FONT_SIZE = 40;
 /** Bees leave from the top-front of the hive. */
-const LAUNCH_OFFSET = new Vec3(0, 0.15, 0.6);
+/** Bees emerge from the top of the hive (slightly in front so they don't start inside the mesh). */
+const LAUNCH_OFFSET = new Vec3(0, 0.38, 0.25);
 /** Ammo numbers of hives waiting behind the front row are faded, as in the reference. */
 const REAR_LABEL_OPACITY = 110;
 /** Hives face the camera, tilted a little further so they read as seen from below (reference). */

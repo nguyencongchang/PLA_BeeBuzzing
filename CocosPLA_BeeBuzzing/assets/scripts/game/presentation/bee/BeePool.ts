@@ -21,8 +21,9 @@ export interface Bee {
     cube: Node | null;
     flap: number;
     readonly start: Vec3;
-    /** Quadratic Bezier control point of the arc from the slot to the path start (world). */
+    /** Cubic Bezier controls of the launch curve from the slot to the path start (world). */
     readonly arcCtrl: Vec3;
+    readonly arcCtrl2: Vec3;
     readonly path: BeeFlightPath;
     readonly center: Vec3;   // target cube center, sculpture-local
     readonly faceDir: Vec3;  // local unit vector out of the grabbed face
@@ -51,7 +52,7 @@ export class BeePool {
             parts.root.children[0].setRotationFromEuler(0, BEE_MODEL_YAW, 0);
             bee = {
                 parts, color, phase: 0, timer: 0, s: 0, leadLength: 0, target: -1, cube: null,
-                flap: Math.random() * 10, start: new Vec3(), arcCtrl: new Vec3(), path: new BeeFlightPath(), center: new Vec3(),
+                flap: Math.random() * 10, start: new Vec3(), arcCtrl: new Vec3(), arcCtrl2: new Vec3(), path: new BeeFlightPath(), center: new Vec3(),
                 faceDir: new Vec3(), leaveFrom: new Vec3(), leaveCtrl: new Vec3(), leaveTo: new Vec3(), prev: new Vec3(),
             };
         }

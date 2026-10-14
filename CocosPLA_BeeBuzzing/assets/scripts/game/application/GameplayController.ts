@@ -22,8 +22,8 @@ const { ccclass } = _decorator;
 /** Max reachability refresh rate while cubes are being removed (stale data is safe). */
 const SOLVE_INTERVAL = 0.1;
 const OUTCOME_CHECK_INTERVAL = 0.25;
-/** Hives wait for the jump animation (real time) before firing. */
-const FIRST_SHOT_DELAY = 0.3;
+/** Hives land (real time) and settle briefly before the first bee comes out, as in the reference. */
+const FIRST_SHOT_DELAY = 0.55;
 /** Let the last bees fly out before showing the win end card. */
 const WIN_DELAY = 1.0;
 

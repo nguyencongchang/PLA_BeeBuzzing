@@ -2,7 +2,7 @@ import { _decorator, Component, math, Vec3 } from 'cc';
 import { GameTime } from '../../application/GameTime';
 import { ModelKit } from '../rendering/ModelKit';
 import { SculptureView } from '../sculpture/SculptureView';
-import { bezier, buildApproachPath, homeArc, launchArc } from './BeeFlightPath';
+import { bezier, buildApproachPath, cubicBezier, homeArc, launchCurve } from './BeeFlightPath';
 import { Bee, BeePool, poseBee } from './BeePool';
 
 const { ccclass } = _decorator;
@@ -11,6 +11,9 @@ const { ccclass } = _decorator;
 const APPROACH = 0, GRAB = 1, PULL = 2, CARRY = 3, LEAVE = 4;
 const GRAB_TIME = 0.07;
 const PULL_TIME = 0.12;
+/** Bees pop out of the hive small and reach full size after this distance (world units). */
+const EMERGE_DISTANCE = 0.45;
+const EMERGE_MIN_SCALE = 0.3;
 /** Extra cells the approach starts beyond the grid exit, so bees swoop in. */
 const EXIT_RUNWAY_CELLS = 3;
 /** Bee hovers this far (cells) in front of the cube face it grabs. */
@@ -80,7 +83,7 @@ export class BeeSwarm extends Component {
         bee.timer = 0;
         bee.start.set(req.from);
         const pathStart = bee.path.pointWorld(0, this.sculpture.node.worldMatrix, this.tmp);
-        bee.leadLength = launchArc(req.from, pathStart, this.sculpture.node.worldPosition, bee.arcCtrl);
+        bee.leadLength = launchCurve(req.from, pathStart, this.sculpture.node.worldPosition, bee.arcCtrl, bee.arcCtrl2);
         bee.prev.set(req.from);
         bee.parts.root.setWorldPosition(req.from);
         bee.parts.root.setScale(1, 1, 1);
@@ -112,7 +115,10 @@ export class BeeSwarm extends Component {
                 bee.s += speed * dt;
                 if (bee.s < bee.leadLength) {
                     bee.path.pointWorld(0, world, this.tmp);
-                    bezier(this.pos, bee.start, bee.arcCtrl, this.tmp, bee.s / bee.leadLength);
+                    cubicBezier(this.pos, bee.start, bee.arcCtrl, bee.arcCtrl2, this.tmp, bee.s / bee.leadLength);
+                    // Emerging from the hive: grows from small to full size over the first stretch.
+                    const k = Math.min(1, EMERGE_MIN_SCALE + (1 - EMERGE_MIN_SCALE) * bee.s / EMERGE_DISTANCE);
+                    bee.parts.root.setScale(k, k, k);
                 } else {
                     bee.path.sampleWorld(bee.s - bee.leadLength, world, this.pos);
                 }
