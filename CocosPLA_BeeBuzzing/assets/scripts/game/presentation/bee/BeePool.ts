@@ -2,6 +2,7 @@ import { Node, Quat, Vec3 } from 'cc';
 import { BeeParts, ModelKit } from '../rendering/ModelKit';
 import { BeeFlightPath } from './BeeFlightPath';
 import { BeeLaunchRoute } from './BeeLaunchRoute';
+import { CubeStreak } from './BeeEffects';
 
 const FLAP_SPEED = 48;
 const FLAP_ANGLE = 42;
@@ -31,6 +32,8 @@ export interface Bee {
     readonly leaveCtrl: Vec3;
     readonly leaveTo: Vec3;
     readonly prev: Vec3;
+    /** Light streak behind the cube while it is pulled out. */
+    readonly streak: CubeStreak;
 }
 
 /** Recycles bee and carried-cube nodes; re-tints them when the color changes. */
@@ -48,12 +51,14 @@ export class BeePool {
             if (bee.color !== color) this.kit.paintBee(bee.parts.body, color);
         } else {
             const parts = this.kit.createBee(color);
+            const streak = new CubeStreak(this.kit.createStreak());
+            streak.node.setParent(this.parent);
             parts.root.setParent(this.parent);
             parts.root.children[0].setRotationFromEuler(0, BEE_MODEL_YAW, 0);
             bee = {
                 parts, color, phase: 0, timer: 0, s: 0, leadLength: 0, target: -1, cube: null,
                 flap: Math.random() * 10, start: new Vec3(), launch: new BeeLaunchRoute(), path: new BeeFlightPath(), center: new Vec3(),
-                faceDir: new Vec3(), leaveFrom: new Vec3(), leaveCtrl: new Vec3(), leaveTo: new Vec3(), prev: new Vec3(),
+                faceDir: new Vec3(), leaveFrom: new Vec3(), leaveCtrl: new Vec3(), leaveTo: new Vec3(), prev: new Vec3(), streak,
             };
         }
         bee.color = color;
@@ -80,6 +85,7 @@ export class BeePool {
 
     release(bee: Bee): void {
         bee.parts.root.active = false;
+        bee.streak.stop();
         if (bee.cube) {
             bee.cube.active = false;
             this.freeCubes.push(bee.cube);

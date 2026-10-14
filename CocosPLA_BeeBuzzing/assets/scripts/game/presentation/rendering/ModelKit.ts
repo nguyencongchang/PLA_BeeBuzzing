@@ -1,4 +1,4 @@
-import { instantiate, Mesh, MeshRenderer, Node, Prefab, Texture2D } from 'cc';
+import { instantiate, Mesh, MeshRenderer, Node, Prefab, primitives, Texture2D, utils } from 'cc';
 import { MaterialFactory } from './MaterialFactory';
 
 /** Bee FBX: wings hinge on the body at these local coordinates (mesh units). */
@@ -12,6 +12,7 @@ const HIVE_MESH_WIDTH = 2.14;
 const CUBE_MESH_SIZE = 1.05;
 
 const WING_HEX = '#FFFFFFB0';
+const STREAK_HEX = '#FFFFFFE6';
 /** Queue hives behind the front one are drawn darker, as in the reference. */
 const QUEUED_HIVE_SHADE = 0.55;
 /** Soft shadow: translucent dark copy offset up-left behind the hive (as in the reference). */
@@ -55,6 +56,7 @@ export class ModelKit {
     private readonly smileTexture: Texture2D | null;
     private readonly hiveMesh: Mesh;
     private readonly cubeMesh: Mesh;
+    private streakMesh: Mesh | null = null;
 
     constructor(materials: MaterialFactory, bee: Prefab, hive: Prefab, cube: Prefab) {
         this.materials = materials;
@@ -121,6 +123,14 @@ export class ModelKit {
     paintHive(hive: Node, color: number, dimmed: boolean): void {
         const renderer = hive.getChildByName('Hexa')!.getComponent(MeshRenderer)!;
         renderer.setSharedMaterial(this.materials.toonGameColor(color, dimmed ? QUEUED_HIVE_SHADE : 1), 0);
+    }
+
+    /** Unit white light streak (stretched along Z by CubeStreak). */
+    createStreak(): Node {
+        this.streakMesh ??= utils.MeshUtils.createMesh(primitives.box({ width: 1, height: 1, length: 1 }));
+        const node = new Node('CubeStreak');
+        addRenderer(node, this.streakMesh).setSharedMaterial(this.materials.solid(STREAK_HEX, { transparent: true }), 0);
+        return node;
     }
 
     createCube(color: number, cellSize: number): Node {

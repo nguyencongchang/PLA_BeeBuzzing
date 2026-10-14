@@ -4,13 +4,16 @@ import { ModelKit } from '../rendering/ModelKit';
 import { SculptureView } from '../sculpture/SculptureView';
 import { bezier, buildApproachPath, homeArc } from './BeeFlightPath';
 import { Bee, BeePool, poseBee } from './BeePool';
+import { tumble } from './BeeEffects';
 
 const { ccclass } = _decorator;
 
 // Flight phases.
 const APPROACH = 0, GRAB = 1, PULL = 2, CARRY = 3, LEAVE = 4;
-const GRAB_TIME = 0.07;
-const PULL_TIME = 0.12;
+/** Bees perch on the cube for a moment before pulling it out (reference). */
+const PERCH_TIME = 0.35;
+const PERCH_WIGGLE = 0.02;
+const PULL_TIME = 0.14;
 /** Bees pop out of the hive small and reach full size after this distance (world units). */
 const EMERGE_DISTANCE = 0.45;
 const EMERGE_MIN_SCALE = 0.3;
@@ -125,14 +128,16 @@ export class BeeSwarm extends Component {
                 if (bee.s >= bee.leadLength + bee.path.length) this.enter(bee, GRAB);
                 break;
             }
-            case GRAB: {
+            case GRAB: { // perched on the cube face, wiggling, then pulls
                 bee.path.pointWorld(bee.path.pointCount - 1, world, this.pos);
-                const punch = 1 + 0.35 * Math.sin(Math.min(1, bee.timer / GRAB_TIME) * Math.PI);
+                this.pos.x += Math.sin(bee.timer * 40) * PERCH_WIGGLE;
+                const punch = 1 + 0.3 * Math.sin(Math.min(1, bee.timer / 0.1) * Math.PI);
                 bee.parts.root.setScale(punch, punch, punch);
-                if (bee.timer >= GRAB_TIME) {
+                if (bee.timer >= PERCH_TIME) {
                     this.pending--;
                     this.localToWorld(bee.center, bee.faceDir, 0, this.tmp);
                     bee.cube = this.pool.acquireCube(bee.color, this.tmp, this.sculpture.node.worldRotation);
+                    bee.streak.start(this.tmp);
                     this.onGrab(bee.target);
                     this.enter(bee, PULL);
                 }
@@ -142,8 +147,10 @@ export class BeeSwarm extends Component {
                 const t = math.clamp01(bee.timer / PULL_TIME);
                 this.localToWorld(bee.center, bee.faceDir, FACE_HOVER_CELLS * cell * t, this.tmp);
                 bee.cube!.setWorldPosition(this.tmp);
+                bee.streak.update(this.tmp, dt);
                 this.localToWorld(bee.center, bee.faceDir, (FACE_HOVER_CELLS + 0.3 * t) * cell, this.pos);
                 if (t >= 1) {
+                    bee.streak.release();
                     bee.s = bee.path.length;
                     this.enter(bee, CARRY);
                 }
@@ -154,6 +161,8 @@ export class BeeSwarm extends Component {
                 bee.path.sampleWorld(bee.s, world, this.pos);
                 bee.path.sampleWorld(bee.s + CUBE_TRAIL_CELLS * cell * bee.path.unitScale, world, this.tmp);
                 bee.cube!.setWorldPosition(this.tmp);
+                bee.streak.update(this.tmp, dt);
+                tumble(bee.cube!, dt);
                 if (bee.s <= 0) this.startHomeFlight(bee);
                 break;
             }
@@ -167,6 +176,7 @@ export class BeeSwarm extends Component {
                 Vec3.scaleAndAdd(this.tmp, this.pos, Vec3.UNIT_Y, -0.14 * k);
                 bee.cube!.setWorldPosition(this.tmp);
                 bee.cube!.setScale(this.pool.cubeScale * k, this.pool.cubeScale * k, this.pool.cubeScale * k);
+                tumble(bee.cube!, dt);
                 if (t >= 1) {
                     this.onHome();
                     return true;
@@ -176,6 +186,8 @@ export class BeeSwarm extends Component {
         }
 
         poseBee(bee, this.pos, dt);
+        // Perched bees face the cube they hold instead of their (wiggling) motion.
+        if (bee.phase === GRAB) bee.parts.root.lookAt(this.localToWorld(bee.center, bee.faceDir, 0, this.tmp));
         return false;
     }
 
