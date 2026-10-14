@@ -18,6 +18,8 @@ const FACE_HOVER_CELLS = 0.75;
 const CUBE_TRAIL_CELLS = 0.8;
 const FLAP_SPEED = 48;
 const FLAP_ANGLE = 42;
+/** Keeps flight readable even if a remote parameter payload contains an older speed. */
+const MAX_BEE_FLIGHT_SPEED = 8;
 /** Fraction of the home flight spent shrinking into the hive entrance. */
 const ENTER_FRACTION = 0.22;
 const ENTER_SCALE = 0.25;
@@ -41,7 +43,7 @@ export class BeeSwarm extends Component {
     onGrab: (target: number) => void = () => undefined;
     /** World position of the hive entrance bees carry cubes into (set by the backdrop). */
     hiveEntrance: (out: Vec3) => Vec3 = (out) => Vec3.transformMat4(out, DEFAULT_HIVE, this.node.worldMatrix);
-    beeSpeed = 16;
+    beeSpeed = MAX_BEE_FLIGHT_SPEED;
 
     private sculpture: SculptureView = null!;
     private pool: BeePool = null!;
@@ -100,7 +102,7 @@ export class BeeSwarm extends Component {
     private step(bee: Bee, dt: number): boolean {
         const world = this.sculpture.node.worldMatrix;
         const cell = this.sculpture.gridSpace.cellSize;
-        const speed = this.beeSpeed;
+        const speed = Math.min(this.beeSpeed, MAX_BEE_FLIGHT_SPEED);
         bee.timer += dt;
 
         switch (bee.phase) {
