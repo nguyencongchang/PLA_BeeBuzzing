@@ -12,7 +12,7 @@ export const BOARD_LAYOUT = {
     /** Ground shadow ellipse under the model. */
     shadowY: -1.05,
     shadowHalfWidth: 1.9,
-    slotY: -2.35,
+    slotY: -2.15,
     slotSpacing: 1.15,
     /** Separator line between the play area and the hive queue panel. */
     separatorY: -3.02,
