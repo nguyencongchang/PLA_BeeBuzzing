@@ -30,12 +30,14 @@ const Categories = {
 };
 
 /**
- * PlayableConfig - Configuration parameters for Liquid Jam Playable Ad
+ * PlayableConfig - Configuration parameters for Bee Cube Playable Ad
  */
 export const PlayableConfig = {
+    // The world root auto-scales to fit this frustum (BeeGameBootstrap.frameWorld).
     MainCamera: new ObjectParameter<CameraParameter>("Camera", new CameraParameter({
         rotation: {x: 0, y: 0, z: 0},
-        position: {x: 0, y: 0, z: 0},
+        position: {x: 0, y: 0, z: 16},
+        fov: 45,
     }), Categories.Default),
 
     RedirectAfterClicks: new ObjectParameter<RedirectParameter>("Redirect After Clicks", new RedirectParameter(
@@ -57,7 +59,7 @@ export const PlayableConfig = {
     // cta Button (ButtonParameter = SpriteParameter + label fields với prefix)
     CTA: new ObjectParameter<ButtonParameter>("cta Button", new ButtonParameter({
         enable: true,
-        position: {x: 0, y: -300},
+        position: {x: -350, y: 775},       // top-left, mirrors the X2 SPEED button
         spriteColor: "#FF5500",              // sprite color (từ SpriteParameter)
         string: "Install Now",    // label text
         labelColor: "#FFFFFF",         // label color

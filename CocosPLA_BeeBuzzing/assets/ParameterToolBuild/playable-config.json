@@ -12,7 +12,7 @@
           "default": {
             "x": 0,
             "y": 0,
-            "z": 0
+            "z": 16
           },
           "x": {
             "min": -2000,
@@ -53,6 +53,11 @@
             "max": 360,
             "step": 1
           }
+        },
+        "fov": {
+          "label": "FOV",
+          "type": "number",
+          "default": 45
         }
       }
     },
@@ -164,8 +169,8 @@
           "label": "Position",
           "type": "coordinates",
           "default": {
-            "x": 0,
-            "y": -300
+            "x": -350,
+            "y": 775
           },
           "x": {
             "min": -2000,
