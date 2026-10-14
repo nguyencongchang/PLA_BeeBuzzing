@@ -41,3 +41,14 @@ export function gameColorRgb(color: number): [number, number, number] {
     const n = parseInt(hex.slice(1), 16);
     return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
+
+/** sRGB 0..1 triplets indexed by game color (unused codes stay black). */
+export function buildPaletteFloat32(): Float32Array {
+    const palette = new Float32Array(256 * 3);
+    for (const key of Object.keys(GAME_COLOR_HEX)) {
+        const color = Number(key);
+        const [r, g, b] = gameColorRgb(color);
+        palette.set([r / 255, g / 255, b / 255], color * 3);
+    }
+    return palette;
+}

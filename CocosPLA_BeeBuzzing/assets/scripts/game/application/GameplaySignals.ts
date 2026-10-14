@@ -1,4 +1,3 @@
-import { Vec3 } from 'cc';
 import { GameOutcome } from '../domain/GameRules';
 
 /** Gameplay events on the shared SignalBus (consumed by HUD, audio, tutorial). */
@@ -13,10 +12,6 @@ export class HiveTapRejectedSignal {
 
 export class BeeLaunchedSignal {
     constructor(public readonly color: number) {}
-}
-
-export class CubePulledSignal {
-    constructor(public readonly color: number, public readonly worldPos: Vec3) {}
 }
 
 export class LevelProgressSignal {

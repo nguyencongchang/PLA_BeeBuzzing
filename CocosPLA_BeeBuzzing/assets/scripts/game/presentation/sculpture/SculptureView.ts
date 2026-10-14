@@ -64,7 +64,8 @@ export class SculptureView extends Component {
     markCellRemoved(i: number): void {
         const g = this.grid;
         const x = g.xs[i], y = g.ys[i], z = g.zs[i];
-        this.markChunkAt(x, y, z);
+        // The grabbed cube's own chunk jumps the queue so it never lingers next to its flying copy.
+        this.markChunkAt(x, y, z, true);
         // Faces of neighbours across a chunk border become visible too.
         if (x % CHUNK === 0) this.markChunkAt(x - 1, y, z);
         if (x % CHUNK === CHUNK - 1) this.markChunkAt(x + 1, y, z);
@@ -95,12 +96,16 @@ export class SculptureView extends Component {
         }
     }
 
-    private markChunkAt(x: number, y: number, z: number): void {
+    private markChunkAt(x: number, y: number, z: number, urgent = false): void {
         if (!this.grid.inBounds(x, y, z)) return;
         const id = Math.floor(x / CHUNK) + this.nx * (Math.floor(y / CHUNK) + this.ny * Math.floor(z / CHUNK));
-        if (this.dirty[id]) return;
+        if (this.dirty[id]) {
+            if (!urgent) return;
+            this.dirtyQueue.splice(this.dirtyQueue.indexOf(id), 1);
+        }
         this.dirty[id] = 1;
-        this.dirtyQueue.push(id);
+        if (urgent) this.dirtyQueue.unshift(id);
+        else this.dirtyQueue.push(id);
     }
 
     private rebuild(chunk: Chunk): void {

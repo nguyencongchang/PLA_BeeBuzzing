@@ -26,8 +26,13 @@ if (!inPath || !outPath) {
 
 const fail = (msg) => { console.error(`[compact-level] FAIL: ${msg}`); process.exit(1); };
 
+/** GameColor codes with a palette entry (assets/scripts/game/infrastructure/GamePalette.ts). */
+const VALID_COLORS = new Set([...Array(31).keys()].filter((c) => c !== 14 && c !== 17));
+
 const raw = JSON.parse(fs.readFileSync(inPath, 'utf8'));
 const { x: W, y: H, z: D } = raw.GridSize;
+if (![W, H, D].every((n) => Number.isInteger(n) && n > 0 && n <= 120)) fail(`grid ${W}x${H}x${D} must be 1..120 per axis`);
+if (!(raw.LineCount > 0)) fail(`LineCount must be > 0, got ${raw.LineCount}`);
 const cells = new Uint8Array(W * H * D);
 const cubeCountByColor = new Map();
 
@@ -35,7 +40,7 @@ for (const cube of raw.Cubes) {
     const { x, y, z } = cube.GridPosition;
     if (x < 0 || y < 0 || z < 0 || x >= W || y >= H || z >= D) fail(`cube out of bounds (${x},${y},${z})`);
     if (cube.Health !== 1) fail(`unsupported cube health ${cube.Health} at (${x},${y},${z})`);
-    if (cube.Color < 0 || cube.Color > 254) fail(`invalid color ${cube.Color}`);
+    if (!VALID_COLORS.has(cube.Color)) fail(`cube color ${cube.Color} has no palette entry`);
     const idx = x + W * (y + H * z);
     if (cells[idx] !== 0) fail(`duplicate cube at (${x},${y},${z})`);
     cells[idx] = cube.Color + 1;
@@ -45,11 +50,12 @@ for (const cube of raw.Cubes) {
 const shooters = [...raw.ShooterSpawnData];
 const ammoByColor = new Map();
 for (const s of shooters) {
-    if (s.IsMystery || s.FrozenAmmo || s.Tunnel?.length || s.SecondColor !== -1 || s.ConnectionGroup) {
+    if (s.IsMystery || s.FrozenAmmo || s.Tunnel?.length || (s.SecondColor ?? -1) !== -1 || s.ConnectionGroup) {
         fail(`special shooter features are not supported (line ${s.Line}, index ${s.Index})`);
     }
     if (s.Line < 0 || s.Line >= raw.LineCount) fail(`shooter line ${s.Line} outside LineCount ${raw.LineCount}`);
-    if (s.Ammo <= 0) fail(`shooter with no ammo (line ${s.Line}, index ${s.Index})`);
+    if (!(s.Ammo > 0)) fail(`shooter with no ammo (line ${s.Line}, index ${s.Index})`);
+    if (!VALID_COLORS.has(s.Color)) fail(`shooter color ${s.Color} has no palette entry`);
     ammoByColor.set(s.Color, (ammoByColor.get(s.Color) ?? 0) + s.Ammo);
 }
 

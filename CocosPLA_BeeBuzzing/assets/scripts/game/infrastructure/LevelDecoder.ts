@@ -27,7 +27,12 @@ export function decodeLevel(json: unknown): LevelData {
     if (cells.length !== width * height * depth) {
         throw new Error(`[LevelDecoder] cell data length ${cells.length} != ${width}x${height}x${depth}`);
     }
-    const hives: HiveSpec[] = raw.hives.map(([line, color, ammo], id) => ({ id, line, color, ammo }));
+    const hives: HiveSpec[] = raw.hives.map(([line, color, ammo], id) => {
+        if (!(line >= 0 && line < raw.lines) || !(ammo > 0)) {
+            throw new Error(`[LevelDecoder] invalid hive #${id}: line ${line}, ammo ${ammo}`);
+        }
+        return { id, line, color, ammo };
+    });
     return {
         width,
         height,

@@ -1,4 +1,4 @@
-import { _decorator, Camera, Color, Component, Graphics, Label, Node, TTFFont, tween, UIOpacity, Vec3, Widget } from 'cc';
+import { _decorator, Camera, Color, Component, Graphics, Label, Node, TTFFont, tween, Tween, UIOpacity, Vec3, Widget } from 'cc';
 import { SignalBus } from 'db://assets/PLAGameFoundation/signalBus/SignalBus';
 import { HiveBoard } from '../../domain/HiveBoard';
 import { GameplayConfig } from '../../application/GameplayConfig';
@@ -116,13 +116,14 @@ export class GameHud extends Component {
 
     private onHint = (s: RotateHintSignal): void => {
         const opacity = this.hint.getComponent(UIOpacity)!;
-        tween(opacity).stop();
+        Tween.stopAllByTarget(opacity);
+        Tween.stopAllByTarget(this.hint);
         if (s.visible) {
             this.hint.active = true;
+            this.hint.setScale(Vec3.ONE);
             tween(opacity).to(0.25, { opacity: 255 }).start();
             tween(this.hint).repeatForever(tween().to(0.5, { scale: new Vec3(1.08, 1.08, 1) }).to(0.5, { scale: Vec3.ONE })).start();
         } else {
-            tween(this.hint).stop();
             tween(opacity).to(0.2, { opacity: 0 }).call(() => { this.hint.active = false; }).start();
         }
     };

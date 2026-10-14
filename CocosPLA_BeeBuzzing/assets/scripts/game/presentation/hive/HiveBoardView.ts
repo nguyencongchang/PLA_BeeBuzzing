@@ -1,4 +1,4 @@
-import { _decorator, Camera, Color, Component, Label, Layers, Node, TTFFont, tween, UITransform, Vec3 } from 'cc';
+import { _decorator, Camera, Color, Component, Label, Layers, Node, TTFFont, tween, Tween, UITransform, Vec3 } from 'cc';
 import { HiveBoard, HiveState } from '../../domain/HiveBoard';
 import { ModelKit } from '../rendering/ModelKit';
 import { BOARD_LAYOUT, queuePosition, slotPosition } from './BoardLayout';
@@ -17,6 +17,8 @@ interface HiveView {
     readonly node: Node;
     readonly label: Label;
     punch: number;
+    /** Ammo currently shown, to avoid re-setting the label string every frame. */
+    shownAmmo: number;
 }
 
 /**
@@ -39,7 +41,7 @@ export class HiveBoardView extends Component {
                 const node = kit.createHive(hive.spec.color);
                 node.setParent(this.node);
                 const label = this.createLabel(labelRoot, font);
-                this.views.set(hive.spec.id, { hive, node, label, punch: 0 });
+                this.views.set(hive.spec.id, { hive, node, label, punch: 0, shownAmmo: -1 });
             });
             this.layoutLine(line, false);
         }
@@ -68,7 +70,9 @@ export class HiveBoardView extends Component {
         const front = this.board.line(line)[0];
         const view = front && this.views.get(front.spec.id);
         if (!view) return;
-        const base = view.node.position.clone();
+        // Shake around the resting spot (not the current, possibly mid-shake, position).
+        Tween.stopAllByTarget(view.node);
+        const base = queuePosition(line, this.board.lineCount, 0, new Vec3());
         tween(view.node)
             .to(0.05, { position: new Vec3(base.x - 0.12, base.y, base.z) })
             .to(0.05, { position: new Vec3(base.x + 0.12, base.y, base.z) })
@@ -110,7 +114,10 @@ export class HiveBoardView extends Component {
             const visible = view.node.scale.x > 0.05;
             view.label.node.active = visible;
             if (!visible) return;
-            view.label.string = `${view.hive.ammo}`;
+            if (view.shownAmmo !== view.hive.ammo) {
+                view.shownAmmo = view.hive.ammo;
+                view.label.string = `${view.hive.ammo}`;
+            }
             Vec3.add(this.tmp, view.node.worldPosition, LAUNCH_OFFSET);
             this.camera.convertToUINode(this.tmp, view.label.node.parent!, this.tmpUi);
             view.label.node.setPosition(this.tmpUi);

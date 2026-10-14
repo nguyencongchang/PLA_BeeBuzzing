@@ -24,6 +24,9 @@ export class TargetSelector {
     private readonly compareByKeyDesc = (a: number, b: number): number => this.keys[b] - this.keys[a];
 
     constructor(grid: VoxelGrid, solver: ReachabilitySolver) {
+        // Rounded view coordinates must fit the packed key: |offset| ≤ half the grid diagonal.
+        const maxExtent = Math.hypot(grid.width, grid.height, grid.depth) / 2;
+        if (maxExtent >= TIER_OFFSET) throw new Error(`[TargetSelector] grid too large for sort key (${maxExtent.toFixed(0)} cells)`);
         this.grid = grid;
         this.solver = solver;
         this.keys = new Float64Array(grid.cellCount);

@@ -1,15 +1,11 @@
-import {
-    _decorator, Camera, Component, Director, director, EffectAsset, JsonAsset, Layers, math, Node, Prefab,
-    Scene, TTFFont, UITransform, view,
-} from 'cc';
+import { _decorator, Camera, Component, Director, director, Layers, math, Node, Scene, UITransform, view } from 'cc';
 import { EDITOR } from 'cc/env';
 import { SignalBus } from 'db://assets/PLAGameFoundation/signalBus/SignalBus';
 import { GameView } from 'db://assets/scripts/UI/GameView';
 import { TimerComponent } from 'db://assets/scripts/UI/GamViewComponents/TimerComponent';
 import { ProgressBarComponent } from 'db://assets/scripts/UI/GamViewComponents/ProgressBarComponent';
-import { decodeLevel } from './infrastructure/LevelDecoder';
-import { loadFirst, loadResource, loadSpriteFrame } from './infrastructure/ResourceLoader';
-import { GAME_COLOR_HEX, gameColorRgb } from './infrastructure/GamePalette';
+import { BeeAssets, loadBeeAssets } from './infrastructure/BeeAssetLoader';
+import { buildPaletteFloat32 } from './infrastructure/GamePalette';
 import { VoxelGrid } from './domain/VoxelGrid';
 import { HiveBoard } from './domain/HiveBoard';
 import { gameplayConfig } from './application/GameplayConfig';
@@ -25,36 +21,14 @@ import { BOARD_LAYOUT } from './presentation/hive/BoardLayout';
 import { BeeSwarm } from './presentation/bee/BeeSwarm';
 import { GameInputRouter } from './presentation/input/GameInputRouter';
 import { GameHud } from './presentation/hud/GameHud';
-import { BackdropSprites, BoardBackdrop } from './presentation/hud/BoardBackdrop';
+import { BoardBackdrop } from './presentation/hud/BoardBackdrop';
 import { TutorialHand } from './presentation/hud/TutorialHand';
 import { GameAudio } from './presentation/hud/GameAudio';
 
 const { ccclass } = _decorator;
 
-const LEVEL_PATH = 'bee/levels/teddy.level';
-const EFFECT_PATH = 'bee/effects/voxel-lit';
-const FONT_PATH = 'font/LilitaOne';
 /** Matches PlayableConfig.MainCamera's default position. */
 const DEFAULT_CAMERA_Z = 16;
-const SPRITES = 'bee/sprites';
-const modelPaths = (name: string) => [`bee/models/${name}/${name}`, `bee/models/${name}`];
-
-async function loadBackdropSprites(): Promise<BackdropSprites> {
-    const [tile, leaves, hiveA, hiveB, slot] = await Promise.all(
-        ['dark-bg', 'leaf-border', 'hive-hanging-a', 'hive-hanging-b', 'slot'].map((n) => loadSpriteFrame(`${SPRITES}/${n}`)),
-    );
-    return { tile, leaves, hiveA, hiveB, slot };
-}
-
-function buildPalette(): Float32Array {
-    const palette = new Float32Array(256 * 3);
-    for (const key of Object.keys(GAME_COLOR_HEX)) {
-        const color = Number(key);
-        const [r, g, b] = gameColorRgb(color);
-        palette.set([r / 255, g / 255, b / 255], color * 3);
-    }
-    return palette;
-}
 
 function createChild(parent: Node, name: string, layer = Layers.Enum.DEFAULT): Node {
     const node = new Node(name);
@@ -75,7 +49,7 @@ export class BeeGameBootstrap extends Component {
     private controller: GameplayController | null = null;
 
     start(): void {
-        this.boot().catch((e) => console.error('[BeeGame] boot failed', e));
+        this.boot().catch((e) => this.onBootFailed(e));
     }
 
     onDestroy(): void {
@@ -89,18 +63,14 @@ export class BeeGameBootstrap extends Component {
     }
 
     private async boot(): Promise<void> {
-        const [levelAsset, effect, bee, hive, cube, font, backdrop, hand] = await Promise.all([
-            loadResource(LEVEL_PATH, JsonAsset),
-            loadResource(EFFECT_PATH, EffectAsset),
-            loadFirst(modelPaths('bee'), Prefab),
-            loadFirst(modelPaths('hive-hexa'), Prefab),
-            loadFirst(modelPaths('bee-cube'), Prefab),
-            loadResource(FONT_PATH, TTFFont).catch((e) => this.optional('font', e)),
-            loadBackdropSprites().catch((e) => this.optional('backdrop sprites', e)),
-            loadSpriteFrame(`${SPRITES}/hand`).catch((e) => this.optional('tutorial hand', e)),
-        ]);
+        const assets = await loadBeeAssets();
+        if (!this.isValid) return; // scene changed while loading
+        this.build(assets);
+        SignalBus.instance.subscribe(GameOutcomeSignal, this.onOutcome);
+    }
+
+    private build({ level, effect, bee, hive, cube, font, backdrop, hand }: BeeAssets): void {
         const config = gameplayConfig;
-        const level = decodeLevel(levelAsset.json);
         const scene = director.getScene()!;
         const cameraNode = scene.getChildByName('Camera3D');
         const uiCanvas = scene.getChildByName('UICanvas');
@@ -121,7 +91,7 @@ export class BeeGameBootstrap extends Component {
         const sculptureNode = createChild(this.world, 'Sculpture');
         sculptureNode.setPosition(0, BOARD_LAYOUT.sculptureY, 0);
         const sculpture = sculptureNode.addComponent(SculptureView);
-        sculpture.init(grid, space, buildPalette(), materials.sculpture());
+        sculpture.init(grid, space, buildPaletteFloat32(), materials.sculpture());
         const rotator = sculptureNode.addComponent(SculptureRotator);
         rotator.tilt = config.initialTilt;
         rotator.autoRotateSpeed = config.autoRotateSpeed;
@@ -167,14 +137,12 @@ export class BeeGameBootstrap extends Component {
         }
         this.node.addComponent(GameAudio);
         this.hideTemplateHud();
-
-        SignalBus.instance.subscribe(GameOutcomeSignal, this.onOutcome);
     }
 
-    /** Optional cosmetic assets: warn and continue without them. */
-    private optional(what: string, error: unknown): null {
-        console.warn(`[BeeGame] ${what} unavailable, continuing without it`, error);
-        return null;
+    /** Never leave a dead ad: surface the error and fall back to the end card (CTA still works). */
+    private onBootFailed(error: unknown): void {
+        console.error('[BeeGame] boot failed, showing the end card instead', error);
+        GameView.instance?.onLose();
     }
 
     /** The template's countdown timer / generic bar are replaced by the bee HUD. */

@@ -1,6 +1,7 @@
 import { _decorator, Camera, Color, Component, Graphics, Node, Sprite, SpriteFrame, UITransform, Vec3, Widget } from 'cc';
 import { BOARD_LAYOUT, lineX, slotPosition } from '../hive/BoardLayout';
 import { uiNode } from './HudWidgets';
+import { BackdropSprites } from '../../infrastructure/BeeAssetLoader';
 
 const { ccclass } = _decorator;
 
@@ -12,14 +13,6 @@ const LEAF_ASPECT = 302 / 936;
 const BG_COLOR = new Color(27, 31, 69, 255);
 /** The tile pattern is busy at full strength; blend it over the clear color. */
 const TILE_TINT = new Color(255, 255, 255, 90);
-
-export interface BackdropSprites {
-    readonly tile: SpriteFrame;
-    readonly leaves: SpriteFrame;
-    readonly hiveA: SpriteFrame;
-    readonly hiveB: SpriteFrame;
-    readonly slot: SpriteFrame;
-}
 
 function sprite(parent: Node, name: string, frame: SpriteFrame, w: number, h: number): Sprite {
     const s = uiNode(name, parent, w, h).addComponent(Sprite);
@@ -45,6 +38,7 @@ export class BoardBackdrop extends Component {
     private readonly tmp = new Vec3();
     private readonly a = new Vec3();
     private readonly b = new Vec3();
+    private layoutKey = '';
 
     /** `bgCamera` renders this layer before the 3D camera. */
     init(camera: Camera, worldRoot: Node, bgCamera: Camera | null, sprites: BackdropSprites, slotCount: number, lineCount: number): void {
@@ -77,7 +71,12 @@ export class BoardBackdrop extends Component {
         this.layout();
     }
 
+    /** Re-layout only when the board's projection changed (resize, framing, camera param). */
     lateUpdate(): void {
+        this.toUi(this.a.set(0, 0, 0), this.b);
+        const key = `${this.pixelsPerUnit().toFixed(2)}:${this.b.x.toFixed(1)}:${this.b.y.toFixed(1)}:${this.node.getComponent(UITransform)!.height}`;
+        if (key === this.layoutKey) return;
+        this.layoutKey = key;
         this.layout();
     }
 

@@ -25,6 +25,7 @@ export class GameInputRouter extends Component {
     private readonly startPos = new Vec2();
     private dragging = false;
     private tracking = false;
+    private touchId = -1;
     private lastMoveTime = 0;
     private draggedOnce = false;
     private readonly ray = new geometry.Ray();
@@ -49,15 +50,16 @@ export class GameInputRouter extends Component {
     }
 
     private onTouchStart(e: EventTouch): void {
-        if (e.getID() !== 0 && this.tracking) return; // single-finger control
+        if (this.tracking) return; // single-finger control: extra fingers are ignored
         e.getLocation(this.startPos);
         this.tracking = true;
+        this.touchId = e.getID();
         this.dragging = false;
         this.lastMoveTime = performance.now();
     }
 
     private onTouchMove(e: EventTouch): void {
-        if (!this.tracking) return;
+        if (!this.tracking || e.getID() !== this.touchId) return;
         const loc = e.getLocation();
         if (!this.dragging && Vec2.distance(loc, this.startPos) > TAP_SLOP) {
             this.dragging = true;
@@ -75,7 +77,7 @@ export class GameInputRouter extends Component {
     }
 
     private onTouchEnd(e: EventTouch): void {
-        if (!this.tracking) return;
+        if (!this.tracking || e.getID() !== this.touchId) return;
         this.tracking = false;
         if (this.dragging) {
             this.rotator.endDrag();

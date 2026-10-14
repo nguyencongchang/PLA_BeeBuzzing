@@ -1,8 +1,9 @@
-import { _decorator, Component, math, Node, Vec3 } from 'cc';
+import { _decorator, Component, math, Vec3 } from 'cc';
 import { GameTime } from '../../application/GameTime';
-import { BeeParts, ModelKit } from '../rendering/ModelKit';
+import { ModelKit } from '../rendering/ModelKit';
 import { SculptureView } from '../sculpture/SculptureView';
-import { BeeFlightPath } from './BeeFlightPath';
+import { buildApproachPath } from './BeeFlightPath';
+import { Bee, BeePool } from './BeePool';
 
 const { ccclass } = _decorator;
 
@@ -17,8 +18,6 @@ const FACE_HOVER_CELLS = 0.75;
 const CUBE_TRAIL_CELLS = 0.8;
 const FLAP_SPEED = 48;
 const FLAP_ANGLE = 42;
-/** Bee mesh head points to -Z after this yaw (lookAt aligns -Z with the heading). */
-const BEE_MODEL_YAW = 180;
 
 export interface LaunchRequest {
     readonly color: number;
@@ -28,47 +27,25 @@ export interface LaunchRequest {
     readonly gridPath: readonly number[];
 }
 
-interface Bee {
-    readonly parts: BeeParts;
-    color: number;
-    phase: number;
-    timer: number;
-    s: number;
-    leadLength: number;
-    target: number;
-    cube: Node | null;
-    flap: number;
-    readonly start: Vec3;
-    readonly path: BeeFlightPath;
-    readonly center: Vec3;   // target cube center, local
-    readonly faceDir: Vec3;  // local unit vector out of the grabbed face
-    readonly leaveFrom: Vec3;
-    readonly leaveTo: Vec3;
-    readonly prev: Vec3;
-}
-
 /**
  * All bees and the cubes they carry, driven by one update loop (no per-bee components).
  * Calls `onGrab(target)` the moment a bee latches on — that is when the cube leaves the grid.
  */
 @ccclass('BeeSwarm')
 export class BeeSwarm extends Component {
-    onGrab: (target: number, color: number) => void = () => undefined;
+    onGrab: (target: number) => void = () => undefined;
     beeSpeed = 16;
 
-    private kit: ModelKit = null!;
     private sculpture: SculptureView = null!;
+    private pool: BeePool = null!;
     private readonly active: Bee[] = [];
-    private readonly freeBees: Bee[] = [];
-    private readonly freeCubes: Node[] = [];
     private pending = 0;
     private readonly pos = new Vec3();
     private readonly tmp = new Vec3();
-    private readonly tmpArr = [0, 0, 0];
 
     init(kit: ModelKit, sculpture: SculptureView): void {
-        this.kit = kit;
         this.sculpture = sculpture;
+        this.pool = new BeePool(kit, this.node, sculpture.gridSpace.cellSize);
     }
 
     /** Bees in flight (including those flying away). */
@@ -82,25 +59,8 @@ export class BeeSwarm extends Component {
     }
 
     launch(req: LaunchRequest): void {
-        const bee = this.acquireBee(req.color);
-        const space = this.sculpture.gridSpace;
-        const gp = req.gridPath;
-        const last = gp.length - 3;
-        const cell = space.cellSize;
-
-        // Face direction = first path segment; exit direction = last segment.
-        const fx = Math.sign(gp[3] - gp[0]), fy = Math.sign(gp[4] - gp[1]), fz = Math.sign(gp[5] - gp[2]);
-        const ex = Math.sign(gp[last] - gp[last - 3]), ey = Math.sign(gp[last + 1] - gp[last - 2]), ez = Math.sign(gp[last + 2] - gp[last - 1]);
-
-        bee.path.reset();
-        this.pushGrid(bee.path, gp[last] + ex * EXIT_RUNWAY_CELLS, gp[last + 1] + ey * EXIT_RUNWAY_CELLS, gp[last + 2] + ez * EXIT_RUNWAY_CELLS);
-        for (let i = last; i >= 3; i -= 3) this.pushGrid(bee.path, gp[i], gp[i + 1], gp[i + 2]);
-        this.pushGrid(bee.path, gp[0] + fx * FACE_HOVER_CELLS, gp[1] + fy * FACE_HOVER_CELLS, gp[2] + fz * FACE_HOVER_CELLS);
-
-        const c = space.cellToLocalArray(gp[0], gp[1], gp[2], this.tmpArr);
-        bee.center.set(c[0], c[1], c[2]);
-        bee.faceDir.set(fx, fy, -fz); // grid Z is mirrored in local space
-
+        const bee = this.pool.acquireBee(req.color);
+        buildApproachPath(bee.path, req.gridPath, this.sculpture.gridSpace, EXIT_RUNWAY_CELLS, FACE_HOVER_CELLS, bee.center, bee.faceDir);
         bee.target = req.target;
         bee.phase = APPROACH;
         bee.s = 0;
@@ -119,7 +79,7 @@ export class BeeSwarm extends Component {
         for (let i = this.active.length - 1; i >= 0; i--) {
             const bee = this.active[i];
             if (this.step(bee, sdt)) {
-                this.release(bee);
+                this.pool.release(bee);
                 this.active[i] = this.active[this.active.length - 1];
                 this.active.pop();
             }
@@ -136,14 +96,13 @@ export class BeeSwarm extends Component {
         switch (bee.phase) {
             case APPROACH: {
                 bee.s += speed * dt;
-                const total = bee.leadLength + bee.path.length;
                 if (bee.s < bee.leadLength) {
                     bee.path.pointWorld(0, world, this.tmp);
                     Vec3.lerp(this.pos, bee.start, this.tmp, bee.s / bee.leadLength);
                 } else {
                     bee.path.sampleWorld(bee.s - bee.leadLength, world, this.pos);
                 }
-                if (bee.s >= total) this.enter(bee, GRAB);
+                if (bee.s >= bee.leadLength + bee.path.length) this.enter(bee, GRAB);
                 break;
             }
             case GRAB: {
@@ -152,8 +111,9 @@ export class BeeSwarm extends Component {
                 bee.parts.root.setScale(punch, punch, punch);
                 if (bee.timer >= GRAB_TIME) {
                     this.pending--;
-                    bee.cube = this.acquireCube(bee.color);
-                    this.onGrab(bee.target, bee.color);
+                    this.localToWorld(bee.center, bee.faceDir, 0, this.tmp);
+                    bee.cube = this.pool.acquireCube(bee.color, this.tmp, this.sculpture.node.worldRotation);
+                    this.onGrab(bee.target);
                     this.enter(bee, PULL);
                 }
                 break;
@@ -205,13 +165,11 @@ export class BeeSwarm extends Component {
         this.pos.y += Math.sin(bee.flap * 0.21) * 0.025;
 
         const root = bee.parts.root;
+        root.setWorldPosition(this.pos);
         Vec3.subtract(this.tmp, this.pos, bee.prev);
         if (this.tmp.lengthSqr() > 1e-8) {
             Vec3.add(this.tmp, this.pos, this.tmp);
-            root.setWorldPosition(this.pos);
             root.lookAt(this.tmp);
-        } else {
-            root.setWorldPosition(this.pos);
         }
         bee.prev.set(this.pos);
     }
@@ -225,53 +183,5 @@ export class BeeSwarm extends Component {
     private localToWorld(center: Vec3, dir: Vec3, dist: number, out: Vec3): Vec3 {
         Vec3.scaleAndAdd(out, center, dir, dist);
         return Vec3.transformMat4(out, out, this.sculpture.node.worldMatrix);
-    }
-
-    private pushGrid(path: BeeFlightPath, x: number, y: number, z: number): void {
-        const l = this.sculpture.gridSpace.cellToLocalArray(x, y, z, this.tmpArr);
-        path.push(l[0], l[1], l[2]);
-    }
-
-    private acquireBee(color: number): Bee {
-        let bee = this.freeBees.pop();
-        if (bee) {
-            if (bee.color !== color) this.kit.paintBee(bee.parts.body, color);
-        } else {
-            const parts = this.kit.createBee(color);
-            parts.root.setParent(this.node);
-            parts.root.children[0].setRotationFromEuler(0, BEE_MODEL_YAW, 0);
-            bee = {
-                parts, color, phase: APPROACH, timer: 0, s: 0, leadLength: 0, target: -1, cube: null,
-                flap: Math.random() * 10, start: new Vec3(), path: new BeeFlightPath(), center: new Vec3(),
-                faceDir: new Vec3(), leaveFrom: new Vec3(), leaveTo: new Vec3(), prev: new Vec3(),
-            };
-        }
-        bee.color = color;
-        bee.parts.root.active = true;
-        return bee;
-    }
-
-    private acquireCube(color: number): Node {
-        let cube = this.freeCubes.pop();
-        if (cube) {
-            this.kit.paintCube(cube, color);
-        } else {
-            cube = this.kit.createCube(color, this.sculpture.gridSpace.cellSize);
-            cube.setParent(this.node);
-        }
-        // Inherit the sculpture's orientation so the cube leaves without popping.
-        cube.setWorldRotation(this.sculpture.node.worldRotation);
-        cube.active = true;
-        return cube;
-    }
-
-    private release(bee: Bee): void {
-        bee.parts.root.active = false;
-        if (bee.cube) {
-            bee.cube.active = false;
-            this.freeCubes.push(bee.cube);
-            bee.cube = null;
-        }
-        this.freeBees.push(bee);
     }
 }

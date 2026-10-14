@@ -63,3 +63,41 @@ export class BeeFlightPath {
         return out.set(this.points[i * 3], this.points[i * 3 + 1], this.points[i * 3 + 2]);
     }
 }
+
+/** Anything that maps (fractional) grid coordinates into sculpture-local space. */
+interface GridToLocal {
+    cellToLocalArray(x: number, y: number, z: number, out: number[]): number[];
+}
+
+const tmpArr = [0, 0, 0];
+
+/**
+ * Builds a bee's approach path from the solver's escape route (flat grid coords:
+ * target, corners..., first cell outside): a runway beyond the exit, the corners in
+ * reverse, then a hover point in front of the grabbed face. Also returns the target
+ * center and the face normal in local space.
+ */
+export function buildApproachPath(
+    path: BeeFlightPath, route: readonly number[], space: GridToLocal,
+    runwayCells: number, hoverCells: number, outCenter: Vec3, outFaceDir: Vec3,
+): void {
+    const last = route.length - 3;
+    // Face direction = first segment; exit direction = last segment.
+    const fx = Math.sign(route[3] - route[0]), fy = Math.sign(route[4] - route[1]), fz = Math.sign(route[5] - route[2]);
+    const ex = Math.sign(route[last] - route[last - 3]);
+    const ey = Math.sign(route[last + 1] - route[last - 2]);
+    const ez = Math.sign(route[last + 2] - route[last - 1]);
+    const push = (x: number, y: number, z: number) => {
+        const l = space.cellToLocalArray(x, y, z, tmpArr);
+        path.push(l[0], l[1], l[2]);
+    };
+
+    path.reset();
+    push(route[last] + ex * runwayCells, route[last + 1] + ey * runwayCells, route[last + 2] + ez * runwayCells);
+    for (let i = last; i >= 3; i -= 3) push(route[i], route[i + 1], route[i + 2]);
+    push(route[0] + fx * hoverCells, route[1] + fy * hoverCells, route[2] + fz * hoverCells);
+
+    const c = space.cellToLocalArray(route[0], route[1], route[2], tmpArr);
+    outCenter.set(c[0], c[1], c[2]);
+    outFaceDir.set(fx, fy, -fz); // grid Z is mirrored in local space
+}
