@@ -2,8 +2,6 @@ import { _decorator, Camera, Component, Director, director, Layers, math, Node, 
 import { EDITOR } from 'cc/env';
 import { SignalBus } from 'db://assets/PLAGameFoundation/signalBus/SignalBus';
 import { GameView } from 'db://assets/scripts/UI/GameView';
-import { TimerComponent } from 'db://assets/scripts/UI/GamViewComponents/TimerComponent';
-import { ProgressBarComponent } from 'db://assets/scripts/UI/GamViewComponents/ProgressBarComponent';
 import { BeeAssets, loadBeeAssets } from './infrastructure/BeeAssetLoader';
 import { buildPaletteFloat32 } from './infrastructure/GamePalette';
 import { VoxelGrid } from './domain/VoxelGrid';
@@ -23,6 +21,7 @@ import { GameInputRouter } from './presentation/input/GameInputRouter';
 import { GameHud } from './presentation/hud/GameHud';
 import { BoardBackdrop } from './presentation/hud/BoardBackdrop';
 import { IntroSequence } from './presentation/hud/IntroSequence';
+import { ensureKeyLight, hideTemplateHud } from './presentation/SceneSetup';
 import { GameAudio } from './presentation/hud/GameAudio';
 
 const { ccclass } = _decorator;
@@ -79,7 +78,7 @@ export class BeeGameBootstrap extends Component {
         SignalBus.instance.subscribe(GameOutcomeSignal, this.onOutcome);
     }
 
-    private build({ level, effect, bee, hive, cube, font, backdrop, hand }: BeeAssets): void {
+    private build({ level, effect, toonEffect, bee, hive, cube, font, backdrop, hand }: BeeAssets): void {
         const config = gameplayConfig;
         const scene = director.getScene()!;
         const cameraNode = scene.getChildByName('Camera3D');
@@ -95,7 +94,8 @@ export class BeeGameBootstrap extends Component {
 
         const grid = new VoxelGrid(level.width, level.height, level.depth, level.cells);
         const space = new GridSpace(level.width, level.height, level.depth, level.cellSize);
-        const materials = new MaterialFactory(effect);
+        const materials = new MaterialFactory(effect, toonEffect);
+        ensureKeyLight(scene, this.node);
         const kit = new ModelKit(materials, bee, hive, cube);
 
         const sculptureNode = createChild(this.world, 'Sculpture');
@@ -146,8 +146,9 @@ export class BeeGameBootstrap extends Component {
             swarm.hiveEntrance = (out) => view.hiveEntrance(out) ?? fallback(out);
         }
         this.node.addComponent(GameAudio);
-        this.hideTemplateHud();
+        hideTemplateHud();
     }
+
 
     /** Never leave a dead ad: surface the error and fall back to the end card (CTA still works). */
     private onBootFailed(error: unknown): void {
@@ -155,13 +156,6 @@ export class BeeGameBootstrap extends Component {
         GameView.instance?.onLose();
     }
 
-    /** The template's countdown timer / generic bar are replaced by the bee HUD. */
-    private hideTemplateHud(): void {
-        const gameView = GameView.instance?.node;
-        if (!gameView) return;
-        gameView.getComponentsInChildren(TimerComponent).forEach((c) => { c.node.active = false; });
-        gameView.getComponentsInChildren(ProgressBarComponent).forEach((c) => { c.node.active = false; });
-    }
 
     /** Uniformly scales the world so the play field always fits the camera frustum. */
     private frameWorld(): void {

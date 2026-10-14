@@ -14,16 +14,11 @@ const CUBE_MESH_SIZE = 1.05;
 const WING_HEX = '#FFFFFFB0';
 /** Queue hives behind the front one are drawn darker, as in the reference. */
 const QUEUED_HIVE_SHADE = 0.55;
-/** Thin black silhouette outline: back faces of a slightly larger hull (inverted hull). */
-const HIVE_OUTLINE_SCALE = 1.05;
-const OUTLINE_HEX = '#000000';
 /** Soft shadow: translucent dark copy offset up-left behind the hive (as in the reference). */
 const HIVE_SHADOW_OFFSET_X = -0.1;
 const HIVE_SHADOW_OFFSET_Y = 0.1;
 const HIVE_SHADOW_DEPTH = 0.1;
 const SHADOW_HEX = '#00000080';
-/** Hive mesh spans z 0..1 (mesh units); the hull is scaled around this center. */
-const HIVE_MESH_CENTER_Z = 0.5;
 const STRIPE_HEX = '#1A1A1A';
 
 export interface BeeParts {
@@ -111,15 +106,8 @@ export class ModelKit {
         mesh.setParent(node);
         const s = HIVE_WIDTH / HIVE_MESH_WIDTH;
         mesh.setScale(s, s, s);
-        addRenderer(mesh, this.hiveMesh).setSharedMaterial(this.materials.gameColor(color), 0);
-
-        // Cartoon look: thin black silhouette outline + soft offset drop shadow.
-        const k = s * HIVE_OUTLINE_SCALE;
-        const outline = new Node('Outline');
-        outline.setParent(node);
-        outline.setScale(k, k, k);
-        outline.setPosition(0, 0, (s - k) * HIVE_MESH_CENTER_Z); // keep the hull centered on the hive
-        addRenderer(outline, this.hiveMesh).setSharedMaterial(this.materials.solid(OUTLINE_HEX, { cullFront: true }), 0);
+        // Toon shading + pixel outline from bee-master.effect; soft offset drop shadow below.
+        addRenderer(mesh, this.hiveMesh).setSharedMaterial(this.materials.toonGameColor(color), 0);
 
         const shadow = new Node('Shadow');
         shadow.setParent(node);
@@ -132,7 +120,7 @@ export class ModelKit {
     /** Front hives (tappable) at full color, hives waiting behind them dimmed. */
     paintHive(hive: Node, color: number, dimmed: boolean): void {
         const renderer = hive.getChildByName('Hexa')!.getComponent(MeshRenderer)!;
-        renderer.setSharedMaterial(this.materials.gameColor(color, { shade: dimmed ? QUEUED_HIVE_SHADE : 1 }), 0);
+        renderer.setSharedMaterial(this.materials.toonGameColor(color, dimmed ? QUEUED_HIVE_SHADE : 1), 0);
     }
 
     createCube(color: number, cellSize: number): Node {

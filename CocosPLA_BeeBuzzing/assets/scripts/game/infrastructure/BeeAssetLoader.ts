@@ -5,6 +5,7 @@ import { loadFirst, loadResource, loadSpriteFrame } from './ResourceLoader';
 
 const LEVEL_PATH = 'bee/levels/teddy.level';
 const EFFECT_PATH = 'bee/effects/voxel-lit';
+const TOON_EFFECT_PATH = 'bee/effects/bee-master';
 const FONT_PATH = 'font/LilitaOne';
 const SPRITES = 'bee/sprites';
 /** FBX prefab sub-asset path differs between importer versions; try both. */
@@ -20,6 +21,8 @@ export interface BackdropSprites {
 export interface BeeAssets {
     readonly level: LevelData;
     readonly effect: EffectAsset;
+    /** Toon effect for hives (cosmetic: falls back to `effect`). */
+    readonly toonEffect: EffectAsset | null;
     readonly bee: Prefab;
     readonly hive: Prefab;
     readonly cube: Prefab;
@@ -45,9 +48,10 @@ async function loadBackdropSprites(): Promise<BackdropSprites> {
 
 /** Loads everything the level needs from `resources/bee` in parallel. Required assets throw. */
 export async function loadBeeAssets(): Promise<BeeAssets> {
-    const [levelAsset, effect, bee, hive, cube, font, backdrop, hand] = await Promise.all([
+    const [levelAsset, effect, toonEffect, bee, hive, cube, font, backdrop, hand] = await Promise.all([
         loadResource(LEVEL_PATH, JsonAsset),
         loadResource(EFFECT_PATH, EffectAsset),
+        optional('toon effect', loadResource(TOON_EFFECT_PATH, EffectAsset)),
         loadFirst(modelPaths('bee'), Prefab),
         loadFirst(modelPaths('hive-hexa'), Prefab),
         loadFirst(modelPaths('bee-cube'), Prefab),
@@ -55,5 +59,5 @@ export async function loadBeeAssets(): Promise<BeeAssets> {
         optional('backdrop sprites', loadBackdropSprites()),
         optional('tutorial hand', loadSpriteFrame(`${SPRITES}/hand`)),
     ]);
-    return { level: decodeLevel(levelAsset.json), effect, bee, hive, cube, font, backdrop, hand };
+    return { level: decodeLevel(levelAsset.json), effect, toonEffect, bee, hive, cube, font, backdrop, hand };
 }
