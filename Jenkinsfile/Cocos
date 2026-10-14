@@ -1,0 +1,144 @@
+pipeline {
+    agent { label 'cocos-mac-3.8.7' }
+
+    options {
+        skipDefaultCheckout(true)
+        disableConcurrentBuilds()
+        timestamps()
+        timeout(time: 30, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '20', artifactNumToKeepStr: '10'))
+    }
+
+    parameters {
+        string(
+            name: 'GITHUB_CREDENTIALS_ID',
+            defaultValue: 'github-ssh',
+            description: 'Jenkins SSH credential used to clone Git submodules.'
+        )
+        booleanParam(
+            name: 'CLEAN_BUILD',
+            defaultValue: true,
+            description: 'Delete generated Cocos folders before building.'
+        )
+        string(
+            name: 'DISCORD_CREDENTIALS_ID',
+            defaultValue: 'discord-webhook',
+            description: 'Jenkins Secret Text credential containing the Discord webhook URL. Leave empty to disable.'
+        )
+    }
+
+    triggers {
+        pollSCM('H/2 * * * *')
+    }
+
+    environment {
+        COCOS_CREATOR_PATH = '/Applications/Cocos/Creator/3.8.7/CocosCreator.app/Contents/MacOS/CocosCreator'
+        COCOS_BUILD_CONFIG = 'ci/cocos-build.json'
+        PATH = "/opt/homebrew/bin:/usr/local/bin:${env.PATH}"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+                sshagent(credentials: [params.GITHUB_CREDENTIALS_ID]) {
+                    sh '''#!/bin/bash
+                        set -euo pipefail
+                        git submodule sync --recursive
+                        git submodule update --init --recursive
+                        git submodule status --recursive
+                    '''
+                }
+            }
+        }
+
+        stage('Resolve project') {
+            steps {
+                script {
+                    env.COCOS_PROJECT_DIR = sh(
+                        script: './ci/find-cocos-project.sh',
+                        returnStdout: true
+                    ).trim()
+                }
+                echo "Cocos project: ${env.COCOS_PROJECT_DIR}"
+            }
+        }
+
+        stage('Install dependencies') {
+            steps {
+                sh '''#!/bin/bash
+                    set -euo pipefail
+                    npm --prefix "$COCOS_PROJECT_DIR" ci --no-audit --no-fund
+                    npm --prefix "$COCOS_PROJECT_DIR/extensions/super-html" ci --no-audit --no-fund
+                '''
+            }
+        }
+
+        stage('Build playable') {
+            steps {
+                sh '''#!/bin/bash
+                    set -euo pipefail
+                    CLEAN_BUILD="${CLEAN_BUILD:-true}" \
+                    COCOS_CREATOR_PATH="${COCOS_CREATOR_PATH}" \
+                    COCOS_PROJECT_DIR="${COCOS_PROJECT_DIR}" \
+                    COCOS_BUILD_CONFIG="${COCOS_BUILD_CONFIG}" \
+                    ./ci/build-cocos.sh
+                '''
+            }
+        }
+
+        stage('Collect artifacts') {
+            steps {
+                sh '''#!/bin/bash
+                    set -euo pipefail
+                    echo 'Generated playable files:'
+                    cat ci-artifacts.txt
+                    bash ./ci/package-artifacts.sh
+                '''
+                archiveArtifacts(
+                    artifacts: '*/build/super-html/**/*.zip,*/build/super-html/**/*.html,dist/*.zip,ci-artifacts.txt',
+                    allowEmptyArchive: false,
+                    fingerprint: true
+                )
+            }
+        }
+    }
+
+    post {
+        always {
+            archiveArtifacts(
+                artifacts: 'cocos-build.log,*/temp/builder/log/**/*.log',
+                allowEmptyArchive: true
+            )
+            script {
+                env.DISCORD_BUILD_RESULT = currentBuild.currentResult ?: 'UNKNOWN'
+                def discordCredentialsId = params.DISCORD_CREDENTIALS_ID?.trim()
+
+                if (discordCredentialsId) {
+                    try {
+                        withCredentials([
+                            string(
+                                credentialsId: discordCredentialsId,
+                                variable: 'DISCORD_WEBHOOK_URL'
+                            )
+                        ]) {
+                            sh '''#!/bin/bash
+                                set +x
+                                if [[ -f ci/notify-discord.js ]]; then
+                                    node ci/notify-discord.js
+                                fi
+                            '''
+                        }
+                    } catch (error) {
+                        echo "WARNING: Discord notification failed: ${error.message}"
+                    }
+                } else {
+                    echo 'Discord notification disabled: DISCORD_CREDENTIALS_ID is empty.'
+                }
+            }
+        }
+        cleanup {
+            sh 'pkill -f "CocosCreator.*${WORKSPACE}" || true'
+        }
+    }
+}

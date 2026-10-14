@@ -1,0 +1,129 @@
+name: UPM Publish Dispatcher
+
+# This is a lightweight dispatcher that triggers centralized publishing logic.
+# DO NOT modify this file directly - all publishing logic is in UPMAutoPublisher.
+
+on:
+  push:
+    branches: [master, main]
+    paths: ['**/package.json']
+  workflow_dispatch:
+    inputs:
+      package_path:
+        description: 'Path to specific package.json (optional)'
+        required: false
+        type: string
+
+jobs:
+  dispatch-publish:
+    runs-on: [self-hosted, linux, x64, arc, tcmplay, org]
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # Need previous commit for diff
+
+      - name: Detect changed packages
+        id: detect
+        run: |
+          echo "🔍 Detecting changed packages..."
+
+          # Check if specific package requested via workflow_dispatch
+          if [ -n "${{ github.event.inputs.package_path }}" ]; then
+            echo "📦 Specific package requested: ${{ github.event.inputs.package_path }}"
+            echo "package_path=${{ github.event.inputs.package_path }}" >> $GITHUB_OUTPUT
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # For push events, detect changed package.json files
+          changed_files=$(git diff --name-only HEAD~1 HEAD | grep 'package\.json$' || echo "")
+
+          if [ -z "$changed_files" ]; then
+            echo "⏭️  No package.json changes detected"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "📦 Changed packages:"
+          echo "$changed_files"
+
+          echo "package_path=" >> $GITHUB_OUTPUT  # Empty for auto-detection
+          echo "has_changes=true" >> $GITHUB_OUTPUT
+
+      - name: Dispatch to UPMAutoPublisher
+        if: steps.detect.outputs.has_changes == 'true'
+        run: |
+          echo "📤 Dispatching publish request to UPMAutoPublisher..."
+
+          # Extract commit details
+          commit_sha="${{ github.sha }}"
+          commit_message=$(git log -1 --pretty=%B | head -1)
+          commit_author="${{ github.actor }}"
+          branch="${{ github.ref_name }}"
+          repository="${{ github.repository }}"
+          package_path="${{ steps.detect.outputs.package_path }}"
+
+          # Escape special characters for JSON
+          commit_message_escaped=$(echo "$commit_message" | jq -Rs .)
+
+          # Build payload
+          payload=$(jq -n \
+            --arg repo "$repository" \
+            --arg sha "$commit_sha" \
+            --argjson message "$commit_message_escaped" \
+            --arg author "$commit_author" \
+            --arg branch "$branch" \
+            --arg package_path "$package_path" \
+            '{
+              repository: $repo,
+              commit_sha: $sha,
+              commit_message: $message,
+              commit_author: $author,
+              branch: $branch,
+              package_path: $package_path
+            }')
+
+          echo "📋 Payload:"
+          echo "$payload" | jq .
+
+          # Send repository_dispatch event
+          jq -n \
+            --arg repo "$repository" \
+            --arg sha "$commit_sha" \
+            --argjson message "$commit_message_escaped" \
+            --arg author "$commit_author" \
+            --arg branch "$branch" \
+            --arg package_path "$package_path" \
+            '{
+              event_type: "package_publish",
+              client_payload: {
+                repository: $repo,
+                commit_sha: $sha,
+                commit_message: $message,
+                commit_author: $author,
+                branch: $branch,
+                package_path: $package_path
+              }
+            }' | gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            /repos/TCMPlay/UPMAutoPublisher/dispatches \
+            --input -
+
+          echo "✅ Dispatch sent successfully"
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        if: always()
+        run: |
+          if [ "${{ steps.detect.outputs.has_changes }}" = "true" ]; then
+            echo "✅ Publish request dispatched to UPMAutoPublisher"
+            echo "📍 Track progress: https://github.com/TCMPlay/UPMAutoPublisher/actions"
+          else
+            echo "⏭️  No package changes detected, skipping dispatch"
+          fi

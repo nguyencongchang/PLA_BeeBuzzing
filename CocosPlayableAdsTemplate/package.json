@@ -1,0 +1,13 @@
+{
+  "name": "TemplateProject",
+  "uuid": "b030525c-0c5f-40e4-b15c-78376acd2feb",
+  "creator": {
+    "version": "3.8.7"
+  },
+  "dependencies": {
+    "bytebrew-web-sdk": "^1.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.9.1"
+  }
+}

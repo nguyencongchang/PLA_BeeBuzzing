@@ -1,0 +1,20 @@
+{
+  "__version__": "1.0.6",
+  "custom_joint_texture_layouts": [],
+  "script": {
+    "preserveSymlinks": true
+  },
+  "general": {
+    "designResolution": {
+      "width": 1080,
+      "height": 1920,
+      "fitHeight": true
+    }
+  },
+  "layer": [
+    {
+      "name": "UI_BG",
+      "value": 1
+    }
+  ]
+}

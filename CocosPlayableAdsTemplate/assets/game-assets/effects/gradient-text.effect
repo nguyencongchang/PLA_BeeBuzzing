@@ -1,0 +1,91 @@
+// label-gradient-legacy.effect  (Cocos Creator 3.8.6+)
+
+CCEffect %{
+  techniques:
+  - name: transparent
+    passes:
+    - vert: sprite-vs:vert
+      frag: gradient-fs:frag
+      rasterizerState: { cullMode: none }
+      depthStencilState: { depthTest: false, depthWrite: false }
+      blendState:
+        targets:
+        - blend: true
+          blendSrc: src_alpha
+          blendDst: one_minus_src_alpha
+          blendSrcAlpha: src_alpha
+          blendDstAlpha: one_minus_src_alpha
+      properties:
+        topColor:       { value: [1, 1, 1, 1], editor: { type: color } }
+        bottomColor:    { value: [0, 0, 0, 1], editor: { type: color } }
+        angle:          { value: 0.0, target: params.x }
+        ratio:          { value: 0.5, target: params.y, editor: { slide: true, range: [0.0, 1.0, 0.01] } }
+        params:         { value: [0.0, 0.5, 0.0, 0.0], editor: { visible: false } }
+}%
+
+CCProgram sprite-vs %{
+  precision highp float;
+  #include <builtin/uniforms/cc-global>
+
+  in vec3 a_position;
+  in vec2 a_texCoord;
+  in vec4 a_color;
+
+  out vec4 v_color;
+  out vec2 v_uv;
+
+  vec4 vert () {
+    vec4 pos = vec4(a_position, 1.0);
+    pos = cc_matViewProj * pos;
+    v_uv = a_texCoord;
+    v_color = a_color;
+    return pos;
+  }
+}%
+
+CCProgram gradient-fs %{
+  precision highp float;
+  #include <builtin/internal/alpha-test>
+
+  in vec4 v_color;
+  in vec2 v_uv;
+
+  #pragma builtin(local)
+  layout(set = 2, binding = 11) uniform sampler2D cc_spriteTexture;
+
+  uniform Gradient {
+    vec4 topColor;
+    vec4 bottomColor;
+    vec4 params;  // x=angle, y=ratio
+  };
+
+  vec4 frag () {
+    vec4 tex = texture(cc_spriteTexture, v_uv);
+
+    float angle = params.x;
+    float ratio = params.y;
+
+    // Tính gradient theo góc (0° = dọc trên xuống dưới)
+    float rad = radians(angle);
+    vec2 dir = vec2(sin(rad), cos(rad));
+    float t = clamp(dot(v_uv - 0.5, dir) + 0.5, 0.0, 1.0);
+
+    // Đảo ngược để top ở trên, bottom ở dưới
+    t = 1.0 - t;
+
+    // Điều chỉnh ratio: 0.5 = 50/50, nhỏ hơn = nhiều bottom, lớn hơn = nhiều top
+    float edge0 = ratio - 0.5;
+    float edge1 = ratio + 0.5;
+    t = smoothstep(edge0, edge1, t);
+
+    vec4 grad = mix(bottomColor, topColor, t);
+
+    // Áp gradient lên texture, giữ alpha từ texture
+    vec4 col;
+    col.rgb = tex.rgb * grad.rgb * v_color.rgb;
+    col.a = tex.a * v_color.a;
+
+    ALPHA_TEST(col);
+    return col;
+  }
+}%

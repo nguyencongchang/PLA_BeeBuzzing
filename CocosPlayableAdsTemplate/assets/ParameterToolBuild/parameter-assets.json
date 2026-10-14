@@ -1,0 +1,9 @@
+[
+  {
+    "assetPath": "TemplateProject/assets/resources/audio/BGM.mp3",
+    "parameterPath": [
+      "BGM"
+    ],
+    "setParameterResource": true
+  }
+]

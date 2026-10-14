@@ -1,0 +1,38 @@
+{
+  "__version__": "1.3.9",
+  "textureCompressConfig": {
+    "genMipmaps": true,
+    "userPreset": {
+      "0attPE055Epbj98A/N6nu6": {
+        "name": "Sprites Compress Config",
+        "options": {
+          "web": {
+            "png": {
+              "quality": 10
+            }
+          },
+          "ios": {
+            "png": {
+              "quality": 10
+            }
+          },
+          "miniGame": {
+            "png": {
+              "quality": 10
+            }
+          },
+          "android": {
+            "png": {
+              "quality": 10
+            }
+          }
+        }
+      }
+    }
+  },
+  "splash-setting": {
+    "logo": {
+      "type": "none"
+    }
+  }
+}

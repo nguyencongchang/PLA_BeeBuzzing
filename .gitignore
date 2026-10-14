@@ -1,0 +1,19 @@
+# Cocos Creator build artefacts (regenerated on open)
+library/
+temp/
+local/
+build/
+profiles/
+native/
+
+# Node
+node_modules/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Local CI output
+cocos-build.log
+ci-artifacts.txt

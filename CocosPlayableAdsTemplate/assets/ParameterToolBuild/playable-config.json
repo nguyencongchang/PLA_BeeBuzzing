@@ -1,0 +1,922 @@
+{
+  "$schema": "./node_modules/@voodoo.io/playable-config/schemas/build-configuration.schema.json",
+  "parameters": {
+    "MainCamera": {
+      "label": "Camera",
+      "type": "object",
+      "category": "Default",
+      "parameters": {
+        "position": {
+          "label": "Position",
+          "type": "coordinates",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x": {
+            "min": -2000,
+            "max": 2000,
+            "step": 1
+          },
+          "y": {
+            "min": -2000,
+            "max": 2000,
+            "step": 1
+          },
+          "z": {
+            "min": -2000,
+            "max": 2000,
+            "step": 1
+          }
+        },
+        "rotation": {
+          "label": "Rotation",
+          "type": "coordinates",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x": {
+            "min": -360,
+            "max": 360,
+            "step": 1
+          },
+          "y": {
+            "min": -360,
+            "max": 360,
+            "step": 1
+          },
+          "z": {
+            "min": -360,
+            "max": 360,
+            "step": 1
+          }
+        }
+      }
+    },
+    "RedirectAfterClicks": {
+      "label": "Redirect After Clicks",
+      "type": "object",
+      "category": "Default",
+      "parameters": {
+        "active": {
+          "label": "Active",
+          "type": "boolean",
+          "default": false
+        },
+        "count": {
+          "label": "Count",
+          "type": "number",
+          "default": 3
+        }
+      }
+    },
+    "MusicVolume": {
+      "label": "Music Volume",
+      "type": "range",
+      "category": "Default",
+      "default": 0.5,
+      "min": 0,
+      "max": 1,
+      "step": 0.1
+    },
+    "SxfVolume": {
+      "label": "SFX Volume",
+      "type": "range",
+      "category": "Default",
+      "default": 0.5,
+      "min": 0,
+      "max": 1,
+      "step": 0.1
+    },
+    "BGM": {
+      "label": "Background Music",
+      "type": "audio",
+      "category": "Audio",
+      "default": ""
+    },
+    "Logo": {
+      "label": "Logo",
+      "type": "object",
+      "category": "Logo",
+      "parameters": {
+        "position": {
+          "label": "Position",
+          "type": "coordinates",
+          "default": {
+            "x": -416.949,
+            "y": -771.667
+          },
+          "x": {
+            "min": -2000,
+            "max": 2000,
+            "step": 1
+          },
+          "y": {
+            "min": -2000,
+            "max": 2000,
+            "step": 1
+          },
+          "z": {
+            "min": -2000,
+            "max": 2000,
+            "step": 1
+          }
+        },
+        "enable": {
+          "label": "Enable",
+          "type": "boolean",
+          "default": false
+        },
+        "contentSize": {
+          "label": "Content Size",
+          "type": "coordinates",
+          "default": {
+            "x": 150,
+            "y": 150
+          },
+          "x": {
+            "min": 0,
+            "max": 2000,
+            "step": 1
+          },
+          "y": {
+            "min": 0,
+            "max": 2000,
+            "step": 1
+          }
+        },
+        "color": {
+          "label": "Color",
+          "type": "color",
+          "default": "#FFFFFF"
+        }
+      }
+    },
+    "CTA": {
+      "label": "cta Button",
+      "type": "object",
+      "category": "CTA",
+      "parameters": {
+        "position": {
+          "label": "Position",
+          "type": "coordinates",
+          "default": {
+            "x": 0,
+            "y": -300
+          },
+          "x": {
+            "min": -2000,
+            "max": 2000,
+            "step": 1
+          },
+          "y": {
+            "min": -2000,
+            "max": 2000,
+            "step": 1
+          },
+          "z": {
+            "min": -2000,
+            "max": 2000,
+            "step": 1
+          }
+        },
+        "enable": {
+          "label": "Enable",
+          "type": "boolean",
+          "default": true
+        },
+        "color": {
+          "label": "Color",
+          "type": "color",
+          "default": "#FF5500"
+        },
+        "labelString": {
+          "label": "Label String",
+          "type": "text",
+          "default": "Install Now"
+        },
+        "labelColor": {
+          "label": "Label Color",
+          "type": "color",
+          "default": "#FFFFFF"
+        },
+        "labelFontSize": {
+          "label": "Label Font Size",
+          "type": "number",
+          "default": 36
+        }
+      }
+    },
+    "Tut": {
+      "label": "Tutorial Text",
+      "type": "object",
+      "category": "Tutorial",
+      "parameters": {
+        "position": {
+          "label": "Position",
+          "type": "coordinates",
+          "default": {
+            "x": 0,
+            "y": 200
+          },
+          "x": {
+            "min": -2000,
+            "max": 2000,
+            "step": 1
+          },
+          "y": {
+            "min": -2000,
+            "max": 2000,
+            "step": 1
+          },
+          "z": {
+            "min": -2000,
+            "max": 2000,
+            "step": 1
+          }
+        },
+        "string": {
+          "label": "String",
+          "type": "text",
+          "default": "Tap to play!"
+        },
+        "color": {
+          "label": "Color",
+          "type": "color",
+          "default": "#FFFFFF"
+        },
+        "fontSize": {
+          "label": "Font Size",
+          "type": "number",
+          "default": 32
+        }
+      }
+    },
+    "HandTut": {
+      "label": "Hand Tutorial",
+      "type": "object",
+      "category": "Tutorial",
+      "parameters": {
+        "position": {
+          "label": "Position",
+          "type": "coordinates",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "x": {
+            "min": -2000,
+            "max": 2000,
+            "step": 1
+          },
+          "y": {
+            "min": -2000,
+            "max": 2000,
+            "step": 1
+          },
+          "z": {
+            "min": -2000,
+            "max": 2000,
+            "step": 1
+          }
+        },
+        "contentSize": {
+          "label": "Content Size",
+          "type": "coordinates",
+          "default": {
+            "x": 200,
+            "y": 200
+          },
+          "x": {
+            "min": 0,
+            "max": 2000,
+            "step": 1
+          },
+          "y": {
+            "min": 0,
+            "max": 2000,
+            "step": 1
+          }
+        },
+        "color": {
+          "label": "Color",
+          "type": "color",
+          "default": "#FFFFFF"
+        }
+      }
+    },
+    "LoadingBackgroundColor": {
+      "label": "Loading Background Color",
+      "type": "color",
+      "category": "Loading",
+      "default": "#4A9FF8"
+    },
+    "LoadingIcon": {
+      "label": "Loading Icon",
+      "type": "object",
+      "category": "Loading",
+      "parameters": {
+        "position": {
+          "label": "Position",
+          "type": "coordinates",
+          "default": {
+            "x": 0,
+            "y": 120
+          },
+          "x": {
+            "min": -2000,
+            "max": 2000,
+            "step": 1
+          },
+          "y": {
+            "min": -2000,
+            "max": 2000,
+            "step": 1
+          },
+          "z": {
+            "min": -2000,
+            "max": 2000,
+            "step": 1
+          }
+        },
+        "contentSize": {
+          "label": "Content Size",
+          "type": "coordinates",
+          "default": {
+            "x": 200,
+            "y": 200
+          },
+          "x": {
+            "min": 0,
+            "max": 2000,
+            "step": 1
+          },
+          "y": {
+            "min": 0,
+            "max": 2000,
+            "step": 1
+          }
+        },
+        "spriteFrame": {
+          "label": "Sprite Frame",
+          "type": "image",
+          "default": ""
+        },
+        "color": {
+          "label": "Color",
+          "type": "color",
+          "default": "#FFFFFF"
+        }
+      }
+    },
+    "LoadingGameName": {
+      "label": "Loading Game Name",
+      "type": "object",
+      "category": "Loading",
+      "parameters": {
+        "position": {
+          "label": "Position",
+          "type": "coordinates",
+          "default": {
+            "x": 0,
+            "y": 319.224
+          },
+          "x": {
+            "min": -2000,
+            "max": 2000,
+            "step": 1
+          },
+          "y": {
+            "min": -2000,
+            "max": 2000,
+            "step": 1
+          },
+          "z": {
+            "min": -2000,
+            "max": 2000,
+            "step": 1
+          }
+        },
+        "string": {
+          "label": "String",
+          "type": "text",
+          "default": "Game"
+        },
+        "color": {
+          "label": "Color",
+          "type": "color",
+          "default": "#FFFFFF"
+        },
+        "fontSize": {
+          "label": "Font Size",
+          "type": "number",
+          "default": 60
+        }
+      }
+    },
+    "EndCardWinCTA": {
+      "label": "Win CTA Button",
+      "type": "object",
+      "category": "EndCard Win",
+      "parameters": {
+        "position": {
+          "label": "Position",
+          "type": "coordinates",
+          "default": {
+            "x": 0,
+            "y": -666
+          },
+          "x": {
+            "min": -2000,
+            "max": 2000,
+            "step": 1
+          },
+          "y": {
+            "min": -2000,
+            "max": 2000,
+            "step": 1
+          },
+          "z": {
+            "min": -2000,
+            "max": 2000,
+            "step": 1
+          }
+        },
+        "enable": {
+          "label": "Enable",
+          "type": "boolean",
+          "default": true
+        },
+        "color": {
+          "label": "Color",
+          "type": "color",
+          "default": "#FFFFFF"
+        },
+        "labelString": {
+          "label": "Label String",
+          "type": "text",
+          "default": "Continue"
+        },
+        "labelColor": {
+          "label": "Label Color",
+          "type": "color",
+          "default": "#FFFFFF"
+        },
+        "labelFontSize": {
+          "label": "Label Font Size",
+          "type": "number",
+          "default": 40
+        }
+      }
+    },
+    "EndCardLoseCTA": {
+      "label": "Lose CTA Button",
+      "type": "object",
+      "category": "EndCard Lose",
+      "parameters": {
+        "position": {
+          "label": "Position",
+          "type": "coordinates",
+          "default": {
+            "x": 0,
+            "y": -666
+          },
+          "x": {
+            "min": -2000,
+            "max": 2000,
+            "step": 1
+          },
+          "y": {
+            "min": -2000,
+            "max": 2000,
+            "step": 1
+          },
+          "z": {
+            "min": -2000,
+            "max": 2000,
+            "step": 1
+          }
+        },
+        "enable": {
+          "label": "Enable",
+          "type": "boolean",
+          "default": true
+        },
+        "color": {
+          "label": "Color",
+          "type": "color",
+          "default": "#FFFFFF"
+        },
+        "labelString": {
+          "label": "Label String",
+          "type": "text",
+          "default": "Retry"
+        },
+        "labelColor": {
+          "label": "Label Color",
+          "type": "color",
+          "default": "#FFFFFF"
+        },
+        "labelFontSize": {
+          "label": "Label Font Size",
+          "type": "number",
+          "default": 40
+        }
+      }
+    }
+  },
+  "metadata": {
+    "version": 1,
+    "parameters": {
+      "MainCamera": {
+        "description": "Camera 3D khung hình gameplay — quyết định người chơi nhìn thấy màn chơi thế nào.",
+        "aliases": [
+          "camera",
+          "máy quay",
+          "góc nhìn",
+          "khung hình"
+        ],
+        "aiHints": [
+          "position là toạ độ 3D (x, y, z) theo đơn vị scene; rotation là góc Euler (độ).",
+          "Tăng z kéo camera ra xa (zoom out); xoay x làm nghiêng khung nhìn."
+        ],
+        "examples": [
+          {
+            "prompt": "Kéo camera ra xa một chút",
+            "changes": [
+              "MainCamera.position.z = 10"
+            ]
+          },
+          {
+            "prompt": "Nghiêng camera xuống 20 độ",
+            "changes": [
+              "MainCamera.rotation.x = -20"
+            ]
+          }
+        ]
+      },
+      "RedirectAfterClicks": {
+        "description": "Chuyển hướng sớm: sau N lần chạm trong game thì tự mở store (không cần bấm CTA).",
+        "aliases": [
+          "redirect",
+          "chuyển hướng sớm",
+          "auto redirect",
+          "tự mở store"
+        ],
+        "aiHints": [
+          "active: false tắt hoàn toàn — người chơi chỉ redirect qua nút CTA.",
+          "count là số lần chạm trước khi redirect; 3–5 là khoảng thường dùng."
+        ],
+        "examples": [
+          {
+            "prompt": "Chuyển hướng store sau 2 lần chạm",
+            "changes": [
+              "RedirectAfterClicks.active = true",
+              "RedirectAfterClicks.count = 2"
+            ]
+          },
+          {
+            "prompt": "Tắt tự chuyển hướng",
+            "changes": [
+              "RedirectAfterClicks.active = false"
+            ]
+          }
+        ]
+      },
+      "MusicVolume": {
+        "description": "Âm lượng nhạc nền toàn playable. 0 là tắt tiếng, 1 là lớn nhất.",
+        "aliases": [
+          "âm lượng nhạc",
+          "music volume",
+          "nhạc to nhỏ",
+          "BGM volume"
+        ],
+        "aiHints": [
+          "Khoảng 0..1, bước 0.1.",
+          "0 tắt nhạc; 0.4–0.6 là khoảng cân bằng thường dùng."
+        ],
+        "examples": [
+          {
+            "prompt": "Giảm nhạc còn một nửa",
+            "changes": [
+              "MusicVolume = 0.25"
+            ]
+          },
+          {
+            "prompt": "Tắt nhạc nền",
+            "changes": [
+              "MusicVolume = 0"
+            ]
+          }
+        ]
+      },
+      "SxfVolume": {
+        "description": "Âm lượng hiệu ứng (chạm, thắng, tín hiệu gameplay). 0 là tắt, 1 là lớn nhất.",
+        "aliases": [
+          "âm lượng hiệu ứng",
+          "SFX volume",
+          "tiếng động",
+          "sound effect"
+        ],
+        "aiHints": [
+          "Khoảng 0..1, bước 0.1.",
+          "Nên để SFX nhỉnh hơn nhạc (vd 0.6 vs 0.4) cho rõ phản hồi."
+        ],
+        "examples": [
+          {
+            "prompt": "Tăng tiếng hiệu ứng",
+            "changes": [
+              "SxfVolume = 0.8"
+            ]
+          },
+          {
+            "prompt": "Tắt hết hiệu ứng âm thanh",
+            "changes": [
+              "SxfVolume = 0"
+            ]
+          }
+        ]
+      },
+      "BGM": {
+        "description": "Tên file nhạc nền, tra trong resources/audio/. Để rỗng thì tắt nhạc.",
+        "aliases": [
+          "nhạc nền",
+          "background music",
+          "bài nhạc",
+          "file nhạc"
+        ],
+        "aiHints": [
+          "Giá trị là tên file (không đuôi) dưới resources/audio/.",
+          "Rỗng thì tắt nhạc bất kể MusicVolume."
+        ],
+        "examples": [
+          {
+            "prompt": "Dùng bản nhạc sôi động",
+            "changes": [
+              "BGM = upbeat_loop"
+            ]
+          },
+          {
+            "prompt": "Tắt nhạc",
+            "changes": [
+              "BGM = "
+            ]
+          }
+        ]
+      },
+      "Logo": {
+        "description": "Logo thương hiệu (tuỳ chọn) hiện trên màn hình trong lúc chơi.",
+        "aliases": [
+          "logo",
+          "logo thương hiệu",
+          "watermark",
+          "nhãn hiệu"
+        ],
+        "aiHints": [
+          "enable: false ẩn logo hoàn toàn.",
+          "color là màu nền/nhuộm sprite; position theo toạ độ UI, y âm là về phía dưới."
+        ],
+        "examples": [
+          {
+            "prompt": "Hiện logo",
+            "changes": [
+              "Logo.enable = true"
+            ]
+          },
+          {
+            "prompt": "Đưa logo lên trên",
+            "changes": [
+              "Logo.position.y = 800"
+            ]
+          }
+        ]
+      },
+      "CTA": {
+        "description": "Nút Install chính trong game. Chạm vào là chuyển sang store.",
+        "aliases": [
+          "nút install",
+          "nút CTA",
+          "nút chính",
+          "nút chơi ngay",
+          "cta button"
+        ],
+        "aiHints": [
+          "color là màu nút (mặc định cam thương hiệu #FF5500).",
+          "labelString là chữ trên nút — nên dưới ~14 ký tự để không xuống dòng.",
+          "labelColor + labelFontSize chỉnh màu và cỡ chữ."
+        ],
+        "examples": [
+          {
+            "prompt": "Đổi nút install thành màu xanh lá và chữ 'Tải ngay'",
+            "changes": [
+              "CTA.color = #2ECC71",
+              "CTA.labelString = Tải ngay"
+            ]
+          },
+          {
+            "prompt": "Ẩn nút CTA trong game",
+            "changes": [
+              "CTA.enable = false"
+            ]
+          },
+          {
+            "prompt": "Chữ nút to hơn",
+            "changes": [
+              "CTA.labelFontSize = 44"
+            ]
+          }
+        ]
+      },
+      "Tut": {
+        "description": "Chữ hướng dẫn hiện lúc bắt đầu playable (vd 'Chạm để chơi!').",
+        "aliases": [
+          "chữ hướng dẫn",
+          "tutorial text",
+          "hướng dẫn",
+          "gợi ý"
+        ],
+        "aiHints": [
+          "string là nội dung chữ; ngắn gọn, mệnh lệnh.",
+          "color là màu chữ; fontSize là cỡ chữ."
+        ],
+        "examples": [
+          {
+            "prompt": "Đổi hướng dẫn thành 'Vuốt để cắt!'",
+            "changes": [
+              "Tut.string = Vuốt để cắt!"
+            ]
+          },
+          {
+            "prompt": "Chữ hướng dẫn màu vàng",
+            "changes": [
+              "Tut.color = #FACC15"
+            ]
+          }
+        ]
+      },
+      "HandTut": {
+        "description": "Bàn tay hoạt hoạ minh hoạ thao tác chính trong phần hướng dẫn.",
+        "aliases": [
+          "bàn tay hướng dẫn",
+          "tay chỉ",
+          "con trỏ tay",
+          "hand tutorial"
+        ],
+        "aiHints": [
+          "position là nơi bàn tay xuất hiện — canh trùng với thao tác người chơi cần làm.",
+          "color nhuộm màu sprite tay."
+        ],
+        "examples": [
+          {
+            "prompt": "Đưa bàn tay hướng dẫn sang phải",
+            "changes": [
+              "HandTut.position.x = 150"
+            ]
+          },
+          {
+            "prompt": "Đổi màu bàn tay",
+            "changes": [
+              "HandTut.color = #FFFFFF"
+            ]
+          }
+        ]
+      },
+      "LoadingBackgroundColor": {
+        "description": "Màu nền của màn hình Loading (màn đầu tiên khi tải playable).",
+        "aliases": [
+          "màu nền loading",
+          "loading background",
+          "màu màn chờ"
+        ],
+        "aiHints": [
+          "Giá trị hex #RRGGBB.",
+          "Nên tương phản với icon và tên game để dễ đọc."
+        ],
+        "examples": [
+          {
+            "prompt": "Nền loading màu đen",
+            "changes": [
+              "LoadingBackgroundColor = #000000"
+            ]
+          },
+          {
+            "prompt": "Nền loading xanh dương",
+            "changes": [
+              "LoadingBackgroundColor = #4A9FF8"
+            ]
+          }
+        ]
+      },
+      "LoadingIcon": {
+        "description": "Icon hiển thị trên màn hình Loading (thường là icon game).",
+        "aliases": [
+          "icon loading",
+          "biểu tượng loading",
+          "loading icon"
+        ],
+        "aiHints": [
+          "spriteFrame rỗng nghĩa là dùng ảnh mặc định trong scene.",
+          "position/contentSize canh vị trí và kích thước icon."
+        ],
+        "examples": [
+          {
+            "prompt": "Đổi màu icon loading",
+            "changes": [
+              "LoadingIcon.color = #FFFFFF"
+            ]
+          },
+          {
+            "prompt": "Đưa icon loading lên cao hơn",
+            "changes": [
+              "LoadingIcon.position.y = 200"
+            ]
+          }
+        ]
+      },
+      "LoadingGameName": {
+        "description": "Tên game hiển thị trên màn hình Loading.",
+        "aliases": [
+          "tên game",
+          "tên trò chơi",
+          "loading game name",
+          "tiêu đề game"
+        ],
+        "aiHints": [
+          "string là chữ tên game; color/fontSize chỉnh màu và cỡ chữ.",
+          "Ngắn gọn để không xuống dòng."
+        ],
+        "examples": [
+          {
+            "prompt": "Đổi tên game thành 'Ninja Run'",
+            "changes": [
+              "LoadingGameName.string = Ninja Run"
+            ]
+          },
+          {
+            "prompt": "Tên game to hơn",
+            "changes": [
+              "LoadingGameName.fontSize = 72"
+            ]
+          }
+        ]
+      },
+      "EndCardWinCTA": {
+        "description": "Nút CTA trên màn hình EndCard khi THẮNG (vd 'Continue').",
+        "aliases": [
+          "nút thắng",
+          "win cta",
+          "nút endcard thắng",
+          "nút tiếp tục"
+        ],
+        "aiHints": [
+          "color màu nút; labelString chữ nút; labelColor/labelFontSize chỉnh chữ.",
+          "Giống CTA gameplay nhưng cho màn thắng."
+        ],
+        "examples": [
+          {
+            "prompt": "Đổi nút thắng thành 'Chơi bản đầy đủ'",
+            "changes": [
+              "EndCardWinCTA.labelString = Chơi bản đầy đủ"
+            ]
+          },
+          {
+            "prompt": "Nút thắng màu xanh lá",
+            "changes": [
+              "EndCardWinCTA.color = #2ECC71"
+            ]
+          }
+        ]
+      },
+      "EndCardLoseCTA": {
+        "description": "Nút CTA trên màn hình EndCard khi THUA (vd 'Retry').",
+        "aliases": [
+          "nút thua",
+          "lose cta",
+          "nút endcard thua",
+          "nút thử lại"
+        ],
+        "aiHints": [
+          "color màu nút; labelString chữ nút.",
+          "Giống CTA gameplay nhưng cho màn thua."
+        ],
+        "examples": [
+          {
+            "prompt": "Đổi nút thua thành 'Thử lại'",
+            "changes": [
+              "EndCardLoseCTA.labelString = Thử lại"
+            ]
+          },
+          {
+            "prompt": "Ẩn nút màn thua",
+            "changes": [
+              "EndCardLoseCTA.enable = false"
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

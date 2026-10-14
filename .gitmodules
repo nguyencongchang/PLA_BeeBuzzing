@@ -1,0 +1,12 @@
+[submodule "CocosPlayableAdsTemplate/assets/PLAGameFoundation"]
+	path = CocosPlayableAdsTemplate/assets/PLAGameFoundation
+	url = git@github.com:nguyencongchang/tcm-PLAGameFoundation.git
+	branch = develop
+[submodule "CocosPlayableAdsTemplate/assets/PlayableParamterTool"]
+	path = CocosPlayableAdsTemplate/assets/PlayableParamterTool
+	url = git@github.com:nguyencongchang/tcm-PlayableParamterTool.git
+	branch = develop
+[submodule "CocosPlayableAdsTemplate/tools/optimize-size"]
+	path = CocosPlayableAdsTemplate/tools/optimize-size
+	url = git@github.com:nguyencongchang/tcm-optimize-size.git
+	branch = develop
