@@ -2,6 +2,7 @@ import { math, Vec3 } from 'cc';
 import { Bee } from './BeePool';
 import { tumble } from './BeeEffects';
 import { gateDoor, RouteAnchor, walkRounded } from './FreeFlightRoute';
+import { SculptureClearance } from './SculptureClearance';
 
 /** Bee scale once fully inside the hive (it shrinks from the entrance on). */
 const ENTER_SCALE = 0.7;
@@ -10,32 +11,50 @@ const ENTER_DEPTH = 0.6;
 /** The carried cube hangs this far below the bee. */
 const CUBE_HANG = 0.14;
 
+/** The entry ends in a straight rise of this length (world units) up into the hole, as in the reference. */
+const ENTRY_RISE = 0.9;
+
 const hang = new Vec3();
 const side = new Vec3();
-let warnedLowHive = false;
+const rayNear = new Vec3();
+const rayFar = new Vec3();
 
 /**
  * Sets up the flight home from the gate, built from the sculpture's free zones (see
- * SculptureClearance): out through the gate's door, up beside the model to above it, across over
- * it to under the hive, then straight up through the entrance (vertical entry, as in the reference).
- * The route is fixed in world space; its legs are spin-proof except the short one by the gate.
+ * SculptureClearance). The hive is 2D, so the bee may enter it at any depth along the camera ray
+ * through the hole: it does so in the free zone in front of the model, which leaves room for a
+ * straight rise into the hole on any screen. Route: out through the gate's door, (from a side door:
+ * over the top to the front), to below the hole, straight up into it.
  */
-export function startHomeFlight(bee: Bee, anchor: RouteAnchor, entrance: (out: Vec3) => Vec3): void {
-    const [gate, door, front, over, hive] = bee.home;
-    gate.set(anchor.gate);
-    gateDoor(anchor, door, side);
-    entrance(hive).y += ENTER_DEPTH;
-    const c = anchor.clearance;
-    // Over the model the carried cube hangs below the bee: keep it clear as well.
-    const above = c.aboveLevel + 2 * CUBE_HANG;
-    if (c.along(hive) < above && !warnedLowHive) {
-        warnedLowHive = true;
-        console.warn('[BeeHomeFlight] hive entrance is level with the sculpture; bees may cross its top');
+export function startHomeFlight(bee: Bee, anchor: RouteAnchor, entrance: (out: Vec3, planeZ?: number) => Vec3): void {
+    const c = anchor.clearance, route = bee.home, pts = bee.homePoints;
+    route.length = 0;
+    const gate = pts[0].set(anchor.gate);
+    const door = gateDoor(anchor, pts[1], side);
+    const hole = frontEntrance(c, entrance, pts[4]);
+    const below = pts[3].set(hole.x, hole.y - ENTRY_RISE, hole.z);
+    const inside = pts[5].set(hole.x, hole.y + ENTER_DEPTH, hole.z);
+    route.push(gate, door);
+    if (Vec3.dot(side, c.front) < 0.999) {
+        // A side door: climb over the model (above zone), come down in front to below the hole.
+        const top = Math.max(c.aboveLevel + 2 * CUBE_HANG, c.along(below));
+        route.push(c.withAlong(door, Math.max(top, c.along(door)), pts[2]), c.withAlong(below, top, pts[6]));
     }
-    const level = Math.min(above, c.along(hive));
-    c.withAlong(hive, level, over);
-    c.withAlong(c.withAhead(over, side, c.sideLevel, front), Math.max(level, c.along(door)), front);
-    bee.s = walkRounded(bee.home, Number.POSITIVE_INFINITY, null);
+    route.push(below, hole, inside);
+    bee.s = walkRounded(route, Number.POSITIVE_INFINITY, null);
+}
+
+/**
+ * The hole on its camera ray, far enough in front of the model that the whole vertical entry (and
+ * the cube hanging under the bee) stays in the free front zone.
+ */
+function frontEntrance(c: SculptureClearance, entrance: (out: Vec3, planeZ?: number) => Vec3, out: Vec3): Vec3 {
+    entrance(rayNear, 0);
+    Vec3.subtract(rayFar, entrance(rayFar, 1), rayNear);
+    const reach = Math.abs(c.front.y) * (ENTRY_RISE + ENTER_DEPTH + CUBE_HANG);
+    const toward = Vec3.dot(rayFar, c.front);
+    if (toward < 1e-3) return out.set(rayNear); // no projection (fallback hive): board plane
+    return Vec3.scaleAndAdd(out, rayNear, rayFar, (c.sideLevel + reach - c.ahead(rayNear, c.front)) / toward);
 }
 
 /**
@@ -48,7 +67,7 @@ export function stepHomeFlight(bee: Bee, speed: number, dt: number, cubeScale: n
     // Full speed into the hive: an ease-out would park bees in the entrance hole.
     const travelled = Math.min(bee.timer * speed, bee.s);
     walkRounded(bee.home, travelled, pos);
-    // The last ENTER_DEPTH of the route runs from the entrance up into the hive.
+    // The last ENTER_DEPTH of the route runs from the hole up into the hive.
     const entering = math.clamp01(1 - (bee.s - travelled) / ENTER_DEPTH);
     const k = math.lerp(1, ENTER_SCALE, entering);
     bee.parts.root.setScale(k, k, k);

@@ -113,16 +113,16 @@ export class BoardBackdrop extends Component {
     }
 
     /**
-     * World position (board plane) of the hive entrance hole, or null without a BG camera.
-     * The hive is UI on the BG canvas, so the hole is projected to screen and back into 3D.
+     * World position of the hive entrance hole at world depth `planeZ` (default: the board plane),
+     * or null without a BG camera. The hive is UI on the BG canvas, so the hole is projected to
+     * screen and back into 3D: every depth gives a point that shows exactly on the hole.
      */
-    hiveEntrance(out: Vec3): Vec3 | null {
+    hiveEntrance(out: Vec3, planeZ = this.worldRoot.worldPosition.z): Vec3 | null {
         if (!this.hive || !this.bgCamera) return null;
         this.tmp.set(0, -HIVE_H * (HIVE_ANCHOR_Y - 0.5 + HIVE_ENTRANCE_Y), 0);
         Vec3.transformMat4(this.tmp, this.tmp, this.hive.worldMatrix);
         this.bgCamera.worldToScreen(this.tmp, this.a);
         this.camera.screenPointToRay(this.a.x, this.a.y, this.ray);
-        const planeZ = this.worldRoot.worldPosition.z;
         if (Math.abs(this.ray.d.z) < 1e-6) return null;
         return Vec3.scaleAndAdd(out, this.ray.o, this.ray.d, (planeZ - this.ray.o.z) / this.ray.d.z);
     }

@@ -59,8 +59,11 @@ export class BeeSwarm extends Component {
     onGrab: (target: number) => void = () => undefined;
     /** A bee carried its cube inside the hive. */
     onHome: () => void = () => undefined;
-    /** World position of the hive entrance bees carry cubes into (set by the backdrop). */
-    hiveEntrance: (out: Vec3) => Vec3 = (out) => Vec3.transformMat4(out, DEFAULT_HIVE, this.node.worldMatrix);
+    /**
+     * World position of the hive entrance bees carry cubes into (set by the backdrop). The hive is
+     * 2D, so this is the point on the camera ray through the entrance hole at world depth `planeZ`.
+     */
+    hiveEntrance: (out: Vec3, planeZ?: number) => Vec3 = (out) => Vec3.transformMat4(out, DEFAULT_HIVE, this.node.worldMatrix);
     beeSpeed = MAX_BEE_FLIGHT_SPEED;
 
     private sculpture: SculptureView = null!;

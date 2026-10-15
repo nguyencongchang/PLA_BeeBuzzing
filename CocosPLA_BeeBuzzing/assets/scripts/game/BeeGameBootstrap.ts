@@ -144,7 +144,7 @@ export class BeeGameBootstrap extends Component {
             const view = createChild(bgCanvas, 'BeeBackdrop', bgCanvas.layer).addComponent(BoardBackdrop);
             view.init(this.camera, this.world, bgCamera, backdrop, board.slotCount, board.lineCount);
             const fallback = swarm.hiveEntrance;
-            swarm.hiveEntrance = (out) => view.hiveEntrance(out) ?? fallback(out);
+            swarm.hiveEntrance = (out, planeZ) => view.hiveEntrance(out, planeZ) ?? fallback(out, planeZ);
             if (view.hiveNode) {
                 const nest = createChild(uiCanvas, 'BeeHiveFront', Layers.Enum.UI_2D).addComponent(HiveNest);
                 nest.node.setSiblingIndex(1);

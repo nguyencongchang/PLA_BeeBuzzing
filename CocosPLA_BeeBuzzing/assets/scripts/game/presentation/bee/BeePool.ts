@@ -28,8 +28,9 @@ export interface Bee {
     readonly path: BeeFlightPath;
     readonly center: Vec3;   // target cube center, sculpture-local
     readonly faceDir: Vec3;  // local unit vector out of the grabbed face
-    /** Home route (world): gate, front door, in front above the model, over it, hive. */
+    /** Home route (world), built from `homePoints` by startHomeFlight. */
     readonly home: Vec3[];
+    readonly homePoints: Vec3[];
     readonly prev: Vec3;
     /** Speed lines behind the cube while it is pulled out and carried along its path. */
     readonly streak: CubeStreak;
@@ -57,7 +58,7 @@ export class BeePool {
             bee = {
                 parts, color, phase: 0, timer: 0, s: 0, leadLength: 0, target: -1, cube: null,
                 flap: Math.random() * 10, start: new Vec3(), launch: new BeeLaunchRoute(), path: new BeeFlightPath(), center: new Vec3(),
-                faceDir: new Vec3(), home: [new Vec3(), new Vec3(), new Vec3(), new Vec3(), new Vec3()], prev: new Vec3(), streak,
+                faceDir: new Vec3(), home: [], homePoints: Array.from({ length: 7 }, () => new Vec3()), prev: new Vec3(), streak,
             };
         }
         bee.color = color;
