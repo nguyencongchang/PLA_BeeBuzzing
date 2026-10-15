@@ -1,4 +1,4 @@
-import { Color, EffectAsset, Material, Texture2D } from 'cc';
+import { Color, EffectAsset, Material, Texture2D, Vec4 } from 'cc';
 import { GAME_COLOR_HEX } from '../../infrastructure/GamePalette';
 
 const TECH_OPAQUE = 0;
@@ -13,7 +13,12 @@ export interface SolidMaterialOptions {
     shade?: number;
     transparent?: boolean;
     texture?: Texture2D | null;
+    /** Full brightness on every face (glows / light streaks). */
+    unlit?: boolean;
 }
+
+/** voxel-lit's default light direction with ambient 1: the lighting term becomes a constant 1. */
+const UNLIT_LIGHT = new Vec4(0.35, 0.85, 0.55, 1);
 
 /**
  * Creates and caches materials built on voxel-lit.effect. Every material has GPU
@@ -63,7 +68,7 @@ export class MaterialFactory {
     /** Single-color material keyed by hex color + options. */
     solid(hex: string, options: SolidMaterialOptions = {}): Material {
         const shade = options.shade ?? 1;
-        const key = `solid:${hex}:${options.edge ? 1 : 0}:${options.transparent ? 1 : 0}:${options.texture?.uuid ?? ''}:${shade}`;
+        const key = `solid:${hex}:${options.edge ? 1 : 0}:${options.transparent ? 1 : 0}:${options.texture?.uuid ?? ''}:${shade}:${options.unlit ? 1 : 0}`;
         return this.getOrCreate(key, () => {
             const defines: Record<string, boolean> = { USE_INSTANCING: true };
             if (options.edge) defines.USE_EDGE = true;
@@ -72,6 +77,7 @@ export class MaterialFactory {
             color.set(Math.round(color.r * shade), Math.round(color.g * shade), Math.round(color.b * shade), color.a);
             const mat = this.create(options.transparent ? TECH_TRANSPARENT : TECH_OPAQUE, defines, color);
             if (options.texture) mat.setProperty('mainTexture', options.texture);
+            if (options.unlit) mat.setProperty('lightParams', UNLIT_LIGHT);
             return mat;
         });
     }

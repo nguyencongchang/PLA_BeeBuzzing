@@ -31,7 +31,7 @@ export interface Bee {
     /** Home route (world): gate, front door, in front above the model, over it, hive. */
     readonly home: Vec3[];
     readonly prev: Vec3;
-    /** Light streak behind the cube while it is pulled out. */
+    /** Speed lines behind the cube while it is pulled out and carried along its path. */
     readonly streak: CubeStreak;
 }
 

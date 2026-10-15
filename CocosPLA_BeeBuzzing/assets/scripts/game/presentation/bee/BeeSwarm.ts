@@ -31,10 +31,11 @@ const EXIT_RUNWAY_CELLS = 3;
 const FACE_HOVER_CELLS = 0.75;
 /** Clinging bee: its belly (model origin) rests just on the cube face (cells from the cube center). */
 const CLING_CELLS = 0.52;
-/** Centre-to-face distance of one cube. Never draw the pull trail behind this plane. */
-const CUBE_FACE_CELLS = 0.5;
-/** Start the shine just after the carried cube has cleared the exposed face. */
-const STREAK_START_CELLS = 0.52;
+/** Speed lines reach this far behind the carried cube, along its own path (cells). */
+const TRAIL_CELLS = 2.6;
+/** Lines fade out over the runway: gone this many cells before the gate. */
+const TRAIL_END_CELLS = 1;
+const TRAIL_FADE_CELLS = 2;
 const CUBE_TRAIL_CELLS = 0.8;
 /** Keeps flight readable even if a remote parameter payload contains an older speed. */
 const MAX_BEE_FLIGHT_SPEED = 3;
@@ -160,18 +161,12 @@ export class BeeSwarm extends Component {
                 const pullDistance = FACE_HOVER_CELLS * cell * t;
                 this.localToWorld(bee.center, bee.faceDir, pullDistance, this.tmp);
                 bee.cube!.setWorldPosition(this.tmp);
-                // Trail only once the cube clears its cell, starting at the exposed face (never through the model).
-                if (pullDistance >= STREAK_START_CELLS * cell) {
-                    if (!bee.streak.active) {
-                        this.localToWorld(bee.center, bee.faceDir, CUBE_FACE_CELLS * cell, this.pos);
-                        bee.streak.start(this.pos);
-                    }
-                    bee.streak.update(this.tmp, dt);
-                }
+                // Lines from the emptied socket outwards: only space the cube itself has just left.
+                this.localToWorld(bee.center, bee.faceDir, Math.max(0, pullDistance - TRAIL_CELLS * cell), this.pos);
+                bee.streak.draw(this.tmp, this.pos, cell * bee.path.unitScale, 1);
                 // Still clinging: the bee rides out on the cube it pulls.
                 this.localToWorld(bee.center, bee.faceDir, pullDistance + CLING_CELLS * cell, this.pos);
                 if (t >= 1) {
-                    if (bee.streak.active) bee.streak.release();
                     bee.s = bee.path.length;
                     this.enter(bee, CARRY);
                 }
@@ -180,11 +175,16 @@ export class BeeSwarm extends Component {
             case CARRY: {
                 bee.s -= speed * dt;
                 bee.path.sampleWorld(bee.s, world, this.pos);
-                bee.path.sampleWorld(bee.s + CUBE_TRAIL_CELLS * cell * bee.path.unitScale, world, this.tmp);
+                const cubeS = Math.min(bee.s + CUBE_TRAIL_CELLS * cell * bee.path.unitScale, bee.path.length);
+                bee.path.sampleWorld(cubeS, world, this.tmp);
                 bee.cube!.setWorldPosition(this.tmp);
-                if (bee.streak.active) bee.streak.update(this.tmp, dt);
+                this.drawCarryTrail(bee, cubeS, cell);
                 tumble(bee.cube!, dt);
-                if (bee.s <= 0) { startHomeFlight(bee, this.anchorTo(bee), this.hiveEntrance); this.enter(bee, LEAVE); }
+                if (bee.s <= 0) {
+                    bee.streak.stop();
+                    startHomeFlight(bee, this.anchorTo(bee), this.hiveEntrance);
+                    this.enter(bee, LEAVE);
+                }
                 break;
             }
             case LEAVE:
@@ -204,6 +204,25 @@ export class BeeSwarm extends Component {
         bee.phase = phase;
         bee.timer = 0;
         if (phase !== GRAB && phase !== LEAVE) bee.parts.root.setScale(1, 1, 1);
+    }
+
+    /**
+     * Speed lines behind a cube carried along its path (cube at path distance `cubeS`, world). The
+     * tail stays on the straight leg the cube is on — never across a corner, which could clip the
+     * cube on its inside — except on the last leg, which runs straight out of the emptied socket.
+     */
+    private drawCarryTrail(bee: Bee, cubeS: number, cell: number): void {
+        const path = bee.path, cellW = cell * path.unitScale;
+        const wanted = cubeS + TRAIL_CELLS * cellW;
+        const legEnd = path.legEnd(cubeS);
+        if (legEnd < path.length || wanted <= path.length) {
+            path.sampleWorld(Math.min(wanted, legEnd), this.sculpture.node.worldMatrix, this.pos);
+        } else {
+            const intoSocket = Math.min((wanted - path.length) / path.unitScale, FACE_HOVER_CELLS * cell);
+            this.localToWorld(bee.center, bee.faceDir, FACE_HOVER_CELLS * cell - intoSocket, this.pos);
+        }
+        const fade = math.clamp01((cubeS / cellW - TRAIL_END_CELLS) / TRAIL_FADE_CELLS);
+        bee.streak.draw(this.tmp, this.pos, cellW, fade);
     }
 
     /** Points the shared route anchor at this bee's live gate and exit direction. */

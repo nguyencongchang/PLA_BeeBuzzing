@@ -59,6 +59,17 @@ export class BeeFlightPath {
         return Vec3.transformMat4(out, out, world);
     }
 
+    /**
+     * World distance of the first path vertex at or beyond `worldS`: the end (towards the path's
+     * end) of the straight leg that contains `worldS`.
+     */
+    legEnd(worldS: number): number {
+        const s = worldS / this.unitScale, c = this.cumulative;
+        let i = 0;
+        while (i < c.length - 1 && c[i] < s) i++;
+        return c[i] * this.unitScale;
+    }
+
     pointWorld(i: number, world: Mat4, out: Vec3): Vec3 {
         this.pointLocal(i, out);
         return Vec3.transformMat4(out, out, world);
