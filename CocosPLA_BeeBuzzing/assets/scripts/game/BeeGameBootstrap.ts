@@ -7,6 +7,7 @@ import { buildPaletteFloat32 } from './infrastructure/GamePalette';
 import { VoxelGrid } from './domain/VoxelGrid';
 import { HiveBoard } from './domain/HiveBoard';
 import { gameplayConfig } from './application/GameplayConfig';
+import { onLevelParameterChanged, whenGameplayParametersReady } from './application/GameplayParameterBinding';
 import { GameplayController } from './application/GameplayController';
 import { GameOutcomeSignal } from './application/GameplaySignals';
 import { MaterialFactory } from './presentation/rendering/MaterialFactory';
@@ -29,6 +30,8 @@ const { ccclass } = _decorator;
 
 /** Matches PlayableConfig.MainCamera's default position. */
 const DEFAULT_CAMERA_Z = 16;
+/** Longest wait for the dashboard / SDK parameter values before building with the defaults (ms). */
+const PARAMETERS_TIMEOUT_MS = 4000;
 
 function createChild(parent: Node, name: string, layer = Layers.Enum.DEFAULT): Node {
     const node = new Node(name);
@@ -58,6 +61,7 @@ export class BeeGameBootstrap extends Component {
 
     onDestroy(): void {
         SignalBus.instance.unsubscribe(GameOutcomeSignal, this.onOutcome);
+        onLevelParameterChanged(null);
     }
 
     update(): void {
@@ -73,6 +77,16 @@ export class BeeGameBootstrap extends Component {
     }
 
     private async boot(): Promise<void> {
+        // Dashboard / SDK parameter values (level, slots, ...) arrive asynchronously: wait for them.
+        if (!(await whenGameplayParametersReady(PARAMETERS_TIMEOUT_MS))) {
+            console.warn(`[BeeGame] parameters not ready after ${PARAMETERS_TIMEOUT_MS} ms, building with defaults`);
+        }
+        if (!this.isValid) return;
+        // A live level edit (dashboard) rebuilds everything: reload the playable with the new value.
+        onLevelParameterChanged(() => {
+            console.log('[BeeGame] level parameter changed, reloading');
+            if (typeof location !== 'undefined') location.reload();
+        });
         const assets = await loadBeeAssets(gameplayConfig.levelJson);
         if (!this.isValid) return; // scene changed while loading
         this.build(assets);

@@ -6,11 +6,15 @@ const GLIDE_HEIGHT = 0.65;
 /** Per-bee height scatter of the horizontal leg so bees don't stack on one line. */
 const GLIDE_JITTER = 0.22;
 
-/** Share of bees that swing out wide (away from the model) before looping back, as in the reference. */
-const WIDE_SHARE = 0.45;
+/**
+ * Launch styles, as in the reference: each hive alternates bees that climb straight up over it and
+ * bees that glide low along the floor; every WIDE_EVERY-th bee swings out in a (modest) loop.
+ */
+const GLIDE = 0, CLIMB = 1, WIDE = 2;
+const WIDE_EVERY = 5;
 /** Wide loop, drawn in the free plane beside the model: out sideways and up, then back. */
-const WIDE_OUT = 2.2;
-const WIDE_LIFT = 1.3;
+const WIDE_OUT = 1.4;
+const WIDE_LIFT = 1.0;
 /** Per-bee scale scatter of the wide loop. */
 const WIDE_JITTER = 0.35;
 /** Points sampled along the loop curve. */
@@ -35,8 +39,9 @@ function cubic(out: Vec3, a: Vec3, b: Vec3, c: Vec3, d: Vec3, t: number): Vec3 {
 
 /**
  * Launch routes from the reference. Every bee pops straight up out of the hive, then either
+ * - keeps climbing straight up over the hive, then crosses to its target,
  * - glides level under the model to below its target and climbs to it, or
- * - swings out wide (sideways and up) and loops back to its target.
+ * - swings out (sideways and up) and loops back to its target.
  * Both are built from the sculpture's free zones (see SculptureClearance): the rise and the glide stay
  * under the model, the climb / loop happen beside it on the side the target faces (in front, for
  * camera-facing targets), and the last leg reaches the gate through the door on that side. The end follows the live (spinning) target, so the route is rebuilt every frame.
@@ -44,21 +49,24 @@ function cubic(out: Vec3, a: Vec3, b: Vec3, c: Vec3, d: Vec3, t: number): Vec3 {
 export class BeeLaunchRoute {
     private readonly pts: Vec3[] = [];
     private readonly pool: Vec3[] = [];
-    private wide = false;
+    private style = GLIDE;
     private glide = 0;
     private loopScale = 1;
     private away = 1;
 
-    /** Picks this bee's route style from the hive top `from` towards the first target `to`. */
-    build(from: Vec3, to: Vec3): void {
-        this.wide = Math.random() < WIDE_SHARE;
+    /**
+     * Picks this bee's route from the hive top `from` towards the first target `to`; `order` is the
+     * bee's launch count from that hive (drives the climb / glide alternation).
+     */
+    build(from: Vec3, to: Vec3, order: number): void {
+        this.style = order % WIDE_EVERY === WIDE_EVERY - 1 ? WIDE : order % 2 === 0 ? CLIMB : GLIDE;
         this.glide = GLIDE_HEIGHT + Math.random() * GLIDE_JITTER;
         this.loopScale = 1 + (Math.random() - 0.5) * 2 * WIDE_JITTER;
         this.away = -(Math.sign(to.x - from.x) || 1);
     }
 
     get isWide(): boolean {
-        return this.wide;
+        return this.style === WIDE;
     }
 
     /** Total length (world units) to the live gate. */
@@ -84,7 +92,12 @@ export class BeeLaunchRoute {
         gateDoor(anchor, door, doorSide);
         this.add(from);
         const rise = this.add(c.withAlong(from, glide, this.next()));
-        if (this.wide) {
+        if (this.style === CLIMB && Vec3.dot(doorSide, c.front) > 0.99) {
+            // Straight up over the hive (camera-side doors only: for a side door it would first have
+            // to fly out sideways to the model's width): out to the front plane, climb, then across.
+            const front = this.add(c.withAhead(rise, doorSide, c.sideLevel, this.next()));
+            this.add(c.withAlong(front, c.along(door), this.next()));
+        } else if (this.style === WIDE) {
             // Loop in the door's side plane: across it (screen-sideways for the camera side) and up the axis.
             const start = this.add(c.withAhead(rise, doorSide, c.sideLevel, this.next()));
             const k = this.loopScale;

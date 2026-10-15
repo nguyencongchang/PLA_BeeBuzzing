@@ -1,4 +1,4 @@
-import {Color, Component, Label, Node, Sprite, Tween, tween, UITransform, Vec3, view, Widget} from 'cc';
+import {Color, Component, Label, Node, screen, Sprite, Tween, tween, UITransform, Vec3, view, Widget} from 'cc';
 
 /** Pop-in of the title and hero when loading starts (seconds). */
 const POP_TIME = 0.45;
@@ -85,8 +85,8 @@ export class LoadingDecor {
      */
     private coverCanvas(): void {
         const {root, background} = this.parts;
-        const frame = view.getFrameSize();
-        const width = frame.width / view.getScaleX(), height = frame.height / view.getScaleY();
+        const frame = screen.windowSize, dpr = screen.devicePixelRatio;
+        const width = frame.width / dpr / view.getScaleX(), height = frame.height / dpr / view.getScaleY();
         const rect = background?.spriteFrame?.originalSize;
         const aspect = rect && rect.height > 0 ? rect.width / rect.height : width / height;
         const widget = root.getComponent(Widget);
