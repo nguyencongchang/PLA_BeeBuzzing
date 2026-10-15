@@ -395,7 +395,7 @@
           "type": "coordinates",
           "default": {
             "x": 0,
-            "y": 120
+            "y": 110
           },
           "x": {
             "min": -2000,
@@ -417,8 +417,8 @@
           "label": "Content Size",
           "type": "coordinates",
           "default": {
-            "x": 200,
-            "y": 200
+            "x": 520,
+            "y": 520
           },
           "x": {
             "min": 0,
@@ -453,7 +453,7 @@
           "type": "coordinates",
           "default": {
             "x": 0,
-            "y": 319.224
+            "y": 610
           },
           "x": {
             "min": -2000,
@@ -474,17 +474,55 @@
         "string": {
           "label": "String",
           "type": "text",
-          "default": "Bee Buzzing"
+          "default": "BEE\nBUZZING"
         },
         "color": {
           "label": "Color",
           "type": "color",
-          "default": "#FFFFFF"
+          "default": "#FFF8E6"
         },
         "fontSize": {
           "label": "Font Size",
           "type": "number",
-          "default": 60
+          "default": 150
+        },
+        "lineHeight": {
+          "label": "Line Height",
+          "type": "number",
+          "default": 136
+        },
+        "outlineColor": {
+          "label": "Outline Color",
+          "type": "color",
+          "default": "#6B2C91"
+        },
+        "outlineWidth": {
+          "label": "Outline Width",
+          "type": "number",
+          "default": 10
+        },
+        "shadowColor": {
+          "label": "Shadow Color",
+          "type": "color",
+          "default": "#3B1552"
+        },
+        "shadowOffset": {
+          "label": "Shadow Offset",
+          "type": "coordinates",
+          "default": {
+            "x": 0,
+            "y": -10
+          },
+          "x": {
+            "min": -50,
+            "max": 50,
+            "step": 1
+          },
+          "y": {
+            "min": -50,
+            "max": 50,
+            "step": 1
+          }
         }
       }
     },

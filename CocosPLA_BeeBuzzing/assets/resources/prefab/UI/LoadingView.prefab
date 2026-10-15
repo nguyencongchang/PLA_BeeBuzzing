@@ -247,7 +247,7 @@
     "_lpos": {
       "__type__": "cc.Vec3",
       "x": 0,
-      "y": -43.515,
+      "y": -520,
       "z": 0
     },
     "_lrot": {
@@ -329,14 +329,14 @@
     "_string": "100%",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
-    "_actualFontSize": 30,
-    "_fontSize": 30,
+    "_actualFontSize": 34,
+    "_fontSize": 34,
     "_fontFamily": "Arial",
-    "_lineHeight": 66.9,
+    "_lineHeight": 40,
     "_overflow": 0,
     "_enableWrapText": true,
     "_font": {
-      "__uuid__": "600fc845-cde6-42a8-a675-7645280b78ad",
+      "__uuid__": "8fa69747-6fd5-4a9f-a7c2-2cc3d7a91627",
       "__expectedType__": "cc.TTFFont"
     },
     "_isSystemFontUsed": false,
@@ -346,15 +346,15 @@
     "_isUnderline": false,
     "_underlineHeight": 2,
     "_cacheMode": 0,
-    "_enableOutline": false,
+    "_enableOutline": true,
     "_outlineColor": {
       "__type__": "cc.Color",
-      "r": 0,
-      "g": 0,
+      "r": 122,
+      "g": 59,
       "b": 0,
       "a": 255
     },
-    "_outlineWidth": 2,
+    "_outlineWidth": 3,
     "_enableShadow": false,
     "_shadowColor": {
       "__type__": "cc.Color",
@@ -416,7 +416,7 @@
     "_lpos": {
       "__type__": "cc.Vec3",
       "x": 0,
-      "y": -119.761,
+      "y": -520,
       "z": 0
     },
     "_lrot": {
@@ -506,8 +506,8 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 244.3,
-      "height": 18.7
+      "width": 538,
+      "height": 48
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -538,8 +538,8 @@
     "_color": {
       "__type__": "cc.Color",
       "r": 255,
-      "g": 255,
-      "b": 255,
+      "g": 168,
+      "b": 31,
       "a": 255
     },
     "_spriteFrame": {
@@ -592,8 +592,8 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 257,
-      "height": 31.5
+      "width": 560,
+      "height": 70
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -774,7 +774,7 @@
     "_overflow": 0,
     "_enableWrapText": true,
     "_font": {
-      "__uuid__": "600fc845-cde6-42a8-a675-7645280b78ad",
+      "__uuid__": "8fa69747-6fd5-4a9f-a7c2-2cc3d7a91627",
       "__expectedType__": "cc.TTFFont"
     },
     "_isSystemFontUsed": false,

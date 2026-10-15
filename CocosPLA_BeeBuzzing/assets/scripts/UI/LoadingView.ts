@@ -1,6 +1,7 @@
 import {_decorator, Component, Sprite, Label, tween, Vec3, UIOpacity, Color, Node} from 'cc';
 import {SignalBus} from 'db://assets/PLAGameFoundation/signalBus/SignalBus';
 import {AllAsyncParametersReadySignal} from 'db://assets/scripts/parameter/ParameterController';
+import {LoadingDecor} from './LoadingDecor';
 
 const {ccclass, property} = _decorator;
 
@@ -33,6 +34,7 @@ export class LoadingView extends Component {
 
     private _progress: number = 0;
     private _onComplete?: () => void;
+    private _decor: LoadingDecor | null = null;
 
     onLoad(): void {
         // Subscribe early to not miss the signal
@@ -56,9 +58,26 @@ export class LoadingView extends Component {
 
         // Show
         this.node.active = true;
+        this._decor ??= new LoadingDecor({
+            root: this.node, background: this.backgroundSprite, fill: this.FillBar, percent: this.progressText,
+            hero: this.iconSprite?.node ?? null, title: this.gameNameLabel?.node ?? null,
+        });
+        this._decor.play();
 
         // Animate progress
         this.animateProgress();
+    }
+
+    update(dt: number): void {
+        this._decor?.update(dt);
+    }
+
+    /** Stays above UI the game adds to the canvas at runtime (hive front layer, HUD) while showing. */
+    lateUpdate(): void {
+        const parent = this.node.parent;
+        if (parent && this.node.getSiblingIndex() !== parent.children.length - 1) {
+            this.node.setSiblingIndex(parent.children.length - 1);
+        }
     }
 
     /**
@@ -137,6 +156,7 @@ export class LoadingView extends Component {
             .to(0.5, {opacity: 0}, {easing: 'sineOut'})
             .call(() => {
                 this.node.active = false;
+                this._decor?.stop();
                 uiOpacity.opacity = 255; // Reset opacity for next time
 
                 // Callback

@@ -97,16 +97,21 @@ export const PlayableConfig = {
     // === Loading Screen Parameters ===
     LoadingBackgroundColor: new ColorParameter("Loading Background Color", "#FFFFFF", Categories.Loading),
     LoadingIcon: new ObjectParameter<SpriteParameter>("Loading Icon", new SpriteParameter({
-        position: {x: 0, y: 120},
-        contentSize: {x: 200, y: 200},
+        position: {x: 0, y: 110},
+        contentSize: {x: 520, y: 520},
         spriteColor: "#FFFFFF",
         spriteFrame: "",
     }), Categories.Loading),
     LoadingGameName: new ObjectParameter<LabelParameter>("Loading Game Name", new LabelParameter({
-        position: {x: 0, y: 319.224},
-        string: "Bee Buzzing",
-        labelColor: "#FFFFFF",
-        fontSize: 60,
+        position: {x: 0, y: 610},
+        string: "BEE\nBUZZING",
+        labelColor: "#FFF8E6",
+        fontSize: 150,
+        lineHeight: 136,
+        outlineColor: "#6B2C91",
+        outlineWidth: 10,
+        shadowColor: "#3B1552",
+        shadowOffset: {x: 0, y: -10},
     }), Categories.Loading),
 
     // EndCard Win CTA Button
