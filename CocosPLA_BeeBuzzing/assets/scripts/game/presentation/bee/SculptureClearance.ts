@@ -71,6 +71,19 @@ export class SculptureClearance {
         return Vec3.scaleAndAdd(out, p, dir, level - this.ahead(p, dir));
     }
 
+    /** The point `along` the spin axis and `radius` out from it in direction `dir` (unit, ⟂ axis). */
+    orbit(dir: Vec3, along: number, radius: number, out: Vec3): Vec3 {
+        this.measure();
+        Vec3.scaleAndAdd(out, this.node.worldPosition, this.axis, along);
+        return Vec3.scaleAndAdd(out, out, dir, radius);
+    }
+
+    /** The unit direction perpendicular to the spin axis closest to `v`. */
+    perpendicular(v: Vec3, out: Vec3): Vec3 {
+        this.measure();
+        return Vec3.scaleAndAdd(out, v, this.axis, -Vec3.dot(v, this.axis)).normalize();
+    }
+
     private get scale(): number {
         return this.node.worldScale.x;
     }

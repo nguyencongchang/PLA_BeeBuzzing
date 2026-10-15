@@ -6,14 +6,16 @@ const GLIDE_HEIGHT = 0.65;
 /** Per-bee height scatter of the horizontal leg so bees don't stack on one line. */
 const GLIDE_JITTER = 0.22;
 
-/** Share of bees that swing out wide (away from the model) before looping back, as in the reference. */
-const WIDE_SHARE = 0.45;
-/** Wide loop, drawn in the free plane beside the model: out sideways and up, then back. */
-const WIDE_OUT = 2.2;
-const WIDE_LIFT = 1.3;
-/** Per-bee scale scatter of the wide loop. */
-const WIDE_JITTER = 0.35;
-/** Points sampled along the loop curve. */
+/** Every LOOP_EVERY-th bee of a hive loops out to its own side; the rest sweep (reference: ~1/3). */
+const LOOP_EVERY = 3;
+/** Sweep: how far past the model's width the climb runs (world units), and its samples. */
+const SWEEP_OUT = 0.25;
+const SWEEP_SAMPLES = 12;
+/** Loop, drawn in the free plane beside the model: out towards the hive's side and up, then back. */
+const LOOP_OUT = 2.2;
+const LOOP_LIFT = 1.3;
+/** Per-bee scale scatter of the loop. */
+const LOOP_JITTER = 0.35;
 const LOOP_SAMPLES = 10;
 
 const door = new Vec3();
@@ -21,6 +23,9 @@ const c1 = new Vec3();
 const c2 = new Vec3();
 const doorSide = new Vec3();
 const across = new Vec3();
+const startDir = new Vec3();
+const sideways = new Vec3();
+const dir = new Vec3();
 let warnedLowModel = false;
 
 /** Point on a cubic Bezier. */
@@ -34,31 +39,39 @@ function cubic(out: Vec3, a: Vec3, b: Vec3, c: Vec3, d: Vec3, t: number): Vec3 {
 }
 
 /**
- * Launch routes from the reference. Every bee pops straight up out of the hive, then either
- * - glides level under the model to below its target and climbs to it, or
- * - swings out wide (sideways and up) and loops back to its target.
- * Both are built from the sculpture's free zones (see SculptureClearance): the rise and the glide stay
- * under the model, the climb / loop happen beside it on the side the target faces (in front, for
- * camera-facing targets), and the last leg reaches the gate through the door on that side. The end follows the live (spinning) target, so the route is rebuilt every frame.
+ * Launch routes traced from the reference video. Every bee pops up out of the hive, then either
+ * - sweeps: glides low along the floor under the model to past its far side, then spirals up around
+ *   that side to the side its target faces (most bees), or
+ * - loops: swings out and up towards the hive's own side of the screen and comes back.
+ * Built from the sculpture's free zones (see SculptureClearance): the glide stays under the model,
+ * the spiral keeps a radius beyond the model's widest point and the loop stays in the plane beside
+ * it, so neither can cut through it; the last leg reaches the gate through its door. The end follows
+ * the live (spinning) target, so the route is rebuilt every frame.
  */
 export class BeeLaunchRoute {
     private readonly pts: Vec3[] = [];
     private readonly pool: Vec3[] = [];
-    private wide = false;
+    private loop = false;
     private glide = 0;
     private loopScale = 1;
-    private away = 1;
+    /** Screen side (+1 right / -1 left) the bee heads to first. */
+    private side = 1;
 
-    /** Picks this bee's route style from the hive top `from` towards the first target `to`. */
-    build(from: Vec3, to: Vec3): void {
-        this.wide = Math.random() < WIDE_SHARE;
+    /**
+     * Picks this bee's route from the hive top `from` towards the first target `to`; `order` is the
+     * bee's launch count from that hive (sweeps and loops interleave, as in the reference).
+     */
+    build(from: Vec3, to: Vec3, order: number): void {
+        this.loop = order % LOOP_EVERY === LOOP_EVERY - 1;
         this.glide = GLIDE_HEIGHT + Math.random() * GLIDE_JITTER;
-        this.loopScale = 1 + (Math.random() - 0.5) * 2 * WIDE_JITTER;
-        this.away = -(Math.sign(to.x - from.x) || 1);
+        this.loopScale = 1 + (Math.random() - 0.5) * 2 * LOOP_JITTER;
+        const towards = Math.sign(to.x - from.x) || (order % 2 ? 1 : -1);
+        // Sweeps cross under the model to the target's far side; loops swing out on the hive's side.
+        this.side = this.loop ? -towards : towards;
     }
 
     get isWide(): boolean {
-        return this.wide;
+        return this.loop;
     }
 
     /** Total length (world units) to the live gate. */
@@ -84,21 +97,41 @@ export class BeeLaunchRoute {
         gateDoor(anchor, door, doorSide);
         this.add(from);
         const rise = this.add(c.withAlong(from, glide, this.next()));
-        if (this.wide) {
-            // Loop in the door's side plane: across it (screen-sideways for the camera side) and up the axis.
-            const start = this.add(c.withAhead(rise, doorSide, c.sideLevel, this.next()));
-            const k = this.loopScale;
-            Vec3.cross(across, c.axis, doorSide);
-            Vec3.multiplyScalar(across, across, (Math.sign(across.x) || 1) * this.away * WIDE_OUT * k);
-            Vec3.scaleAndAdd(c1, Vec3.add(c1, start, across), c.axis, WIDE_LIFT * k);
-            Vec3.scaleAndAdd(c2, Vec3.scaleAndAdd(c2, door, across, 0.5), c.axis, WIDE_LIFT * 0.6 * k);
-            for (let i = 1; i < LOOP_SAMPLES; i++) this.pts.push(cubic(this.next(), start, c1, c2, door, i / LOOP_SAMPLES));
-        } else {
-            this.add(c.withAlong(door, glide, this.next()));
-        }
+        if (this.loop) this.addLoop(c, rise);
+        else this.addSweep(c, glide);
         this.add(door);
         this.add(anchor.gate);
         return this.pts;
+    }
+
+    /**
+     * Glide to past the model's far side, then spiral up around the spin axis (radius beyond the
+     * model's widest point) to the door's side, reaching the door's height there.
+     */
+    private addSweep(c: RouteAnchor['clearance'], glide: number): void {
+        c.perpendicular(Vec3.multiplyScalar(sideways, Vec3.UNIT_X, this.side), startDir);
+        Vec3.cross(across, c.axis, startDir);
+        const radius = c.sideLevel + SWEEP_OUT;
+        const end = Math.atan2(Vec3.dot(doorSide, across), Vec3.dot(doorSide, startDir));
+        const top = c.along(door);
+        for (let i = 0; i <= SWEEP_SAMPLES; i++) {
+            const t = i / SWEEP_SAMPLES, angle = end * t;
+            Vec3.scaleAndAdd(dir, Vec3.multiplyScalar(dir, startDir, Math.cos(angle)), across, Math.sin(angle));
+            // Climb mostly in the first part of the swing, like the reference arc up the far side.
+            const lift = 1 - (1 - t) * (1 - t);
+            this.pts.push(c.orbit(dir, glide + (top - glide) * lift, radius, this.next()));
+        }
+    }
+
+    /** Loop in the door's side plane: out towards the hive's side and up, then back to the door. */
+    private addLoop(c: RouteAnchor['clearance'], rise: Vec3): void {
+        const start = this.add(c.withAhead(rise, doorSide, c.sideLevel, this.next()));
+        const k = this.loopScale;
+        Vec3.cross(across, c.axis, doorSide);
+        Vec3.multiplyScalar(across, across, (Math.sign(across.x) || 1) * this.side * LOOP_OUT * k);
+        Vec3.scaleAndAdd(c1, Vec3.add(c1, start, across), c.axis, LOOP_LIFT * k);
+        Vec3.scaleAndAdd(c2, Vec3.scaleAndAdd(c2, door, across, 0.5), c.axis, LOOP_LIFT * 0.6 * k);
+        for (let i = 1; i < LOOP_SAMPLES; i++) this.pts.push(cubic(this.next(), start, c1, c2, door, i / LOOP_SAMPLES));
     }
 
     /** Next pooled point (not yet part of the route). */

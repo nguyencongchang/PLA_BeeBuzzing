@@ -76,6 +76,8 @@ export class BeeSwarm extends Component {
     private anchor: RouteAnchor & { gate: Vec3; exit: Vec3 } = null!;
     private readonly pos = new Vec3();
     private readonly tmp = new Vec3();
+    /** Bees launched so far per hive position (sweeps and loops interleave per hive). */
+    private readonly launchCounts = new Map<string, number>();
 
     init(kit: ModelKit, sculpture: SculptureView, grid: VoxelGrid): void {
         this.sculpture = sculpture;
@@ -104,7 +106,10 @@ export class BeeSwarm extends Component {
         bee.phase = APPROACH;
         bee.s = bee.timer = 0;
         bee.start.set(req.from);
-        bee.launch.build(req.from, this.anchorTo(bee).gate);
+        const hiveKey = `${req.from.x.toFixed(2)},${req.from.y.toFixed(2)}`;
+        const order = this.launchCounts.get(hiveKey) ?? 0;
+        this.launchCounts.set(hiveKey, order + 1);
+        bee.launch.build(req.from, this.anchorTo(bee).gate, order);
         bee.prev.set(req.from);
         bee.parts.root.setWorldPosition(req.from);
         bee.parts.root.setScale(1, 1, 1);
