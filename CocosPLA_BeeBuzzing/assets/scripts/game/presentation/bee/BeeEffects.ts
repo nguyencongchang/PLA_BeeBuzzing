@@ -1,11 +1,18 @@
 import { Node, Quat, Vec3 } from 'cc';
 
-/** Speed lines, in cells of the carried cube: width, spacing across the motion, gap behind the cube. */
-const LINE_WIDTH = 0.09;
-const LINE_SPACING = 0.55;
+/** Speed-line width and the gap from the cube center to where the lines start (cells). */
+const LINE_WIDTH = 0.06;
 const LINE_GAP = 0.5;
-/** Each line starts this far (share of the trail) behind the cube's back face: staggered lines. */
-const LINE_STAGGER = [0, 0.3];
+/**
+ * Reference layout: a long center line and two shorter ones beside it, all within the cube's
+ * width. `offset` across the motion (cells), `length` as a share of the trail.
+ */
+const LINES = [
+    { offset: 0, length: 1 },
+    { offset: -0.3, length: 0.62 },
+    { offset: 0.3, length: 0.8 },
+];
+export const STREAK_LINE_COUNT = LINES.length;
 /** Carried cubes tumble slowly, as in the reference. */
 const TUMBLE_DEG_PER_SEC = 150;
 const TUMBLE_AXIS = new Vec3(0.8, 0.5, 0.3).normalize();
@@ -48,16 +55,15 @@ export class CubeStreak {
         this.node.active = true;
         const lines = this.node.children;
         for (let i = 0; i < lines.length; i++) {
-            const offset = (i - (lines.length - 1) / 2) * LINE_SPACING * cell;
-            const start = LINE_STAGGER[i % LINE_STAGGER.length] * length;
+            const { offset, length: share } = LINES[i];
             Vec3.scaleAndAdd(a, head, dir, -LINE_GAP * cell);
-            Vec3.scaleAndAdd(a, a, side, offset);
-            Vec3.scaleAndAdd(b, a, dir, -(length - start));
+            Vec3.scaleAndAdd(a, a, side, offset * cell);
+            Vec3.scaleAndAdd(b, a, dir, -length * share);
             Vec3.lerp(mid, a, b, 0.5);
             const line = lines[i];
             line.setWorldPosition(mid);
             line.lookAt(a);
-            line.setWorldScale(width, width, length - start);
+            line.setWorldScale(width, width, length * share);
         }
     }
 

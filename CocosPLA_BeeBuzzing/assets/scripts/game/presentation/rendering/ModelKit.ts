@@ -12,10 +12,8 @@ const HIVE_MESH_WIDTH = 2.14;
 const CUBE_MESH_SIZE = 1.05;
 
 const WING_HEX = '#FFFFFFB0';
-/** Speed lines behind a carried cube: thin, slightly see-through white, as in the reference. */
-const STREAK_LINE_HEX = '#FFFFFFD0';
-/** Parallel speed lines per cube (CubeStreak lays them out). */
-const STREAK_LINE_COUNT = 2;
+/** Speed lines behind a carried cube: white, brightest at the cube, as in the reference. */
+const STREAK_LINE_HEX = '#FFFFFFF0';
 /** Queue hives behind the front one are drawn darker, as in the reference. */
 const QUEUED_HIVE_SHADE = 0.55;
 /** Soft shadow: translucent dark copy offset up-left behind the hive (as in the reference). */
@@ -128,12 +126,15 @@ export class ModelKit {
         renderer.setSharedMaterial(this.materials.toonGameColor(color, dimmed ? QUEUED_HIVE_SHADE : 1), 0);
     }
 
-    /** Speed-line set behind a carried cube: unit boxes along Z, each placed by CubeStreak. */
-    createStreak(): Node {
-        this.streakMesh ??= utils.MeshUtils.createMesh(primitives.box({ width: 1, height: 1, length: 1 }));
+    /**
+     * `lineCount` speed lines behind a carried cube, each placed by CubeStreak: a unit box along Z
+     * whose alpha fades from 1 at its -Z end (the cube, which lookAt aims -Z at) to 0 at its tail.
+     */
+    createStreak(lineCount: number): Node {
+        this.streakMesh ??= utils.MeshUtils.createMesh(fadingLineGeometry());
         const node = new Node('CubeStreak');
-        const material = this.materials.solid(STREAK_LINE_HEX, { transparent: true, unlit: true });
-        for (let i = 0; i < STREAK_LINE_COUNT; i++) {
+        const material = this.materials.solid(STREAK_LINE_HEX, { transparent: true, unlit: true, vertexColor: true });
+        for (let i = 0; i < lineCount; i++) {
             const line = new Node(`Line${i}`);
             line.setParent(node);
             addRenderer(line, this.streakMesh).setSharedMaterial(material, 0);
@@ -164,4 +165,13 @@ export class ModelKit {
         addRenderer(wing, mesh).setSharedMaterial(material, 0);
         return pivot;
     }
+}
+
+/** Unit box along Z with a white vertex-color alpha ramp: opaque at z = -0.5, clear at z = +0.5. */
+function fadingLineGeometry(): primitives.IGeometry {
+    const geometry = primitives.box({ width: 1, height: 1, length: 1 });
+    const colors: number[] = [];
+    for (let i = 2; i < geometry.positions.length; i += 3) colors.push(1, 1, 1, 0.5 - geometry.positions[i]);
+    geometry.colors = colors;
+    return geometry;
 }

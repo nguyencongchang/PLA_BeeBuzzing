@@ -32,7 +32,7 @@ const FACE_HOVER_CELLS = 0.75;
 /** Clinging bee: its belly (model origin) rests just on the cube face (cells from the cube center). */
 const CLING_CELLS = 0.52;
 /** Speed lines reach this far behind the carried cube, along its own path (cells). */
-const TRAIL_CELLS = 2.6;
+const TRAIL_CELLS = 3.4;
 /** Lines fade out over the runway: gone this many cells before the gate. */
 const TRAIL_END_CELLS = 1;
 const TRAIL_FADE_CELLS = 2;

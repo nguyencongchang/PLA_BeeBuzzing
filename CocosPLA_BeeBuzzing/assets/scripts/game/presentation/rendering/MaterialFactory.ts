@@ -15,6 +15,8 @@ export interface SolidMaterialOptions {
     texture?: Texture2D | null;
     /** Full brightness on every face (glows / light streaks). */
     unlit?: boolean;
+    /** Multiply by the mesh's vertex colors (e.g. an alpha gradient). */
+    vertexColor?: boolean;
 }
 
 /** voxel-lit's default light direction with ambient 1: the lighting term becomes a constant 1. */
@@ -68,11 +70,12 @@ export class MaterialFactory {
     /** Single-color material keyed by hex color + options. */
     solid(hex: string, options: SolidMaterialOptions = {}): Material {
         const shade = options.shade ?? 1;
-        const key = `solid:${hex}:${options.edge ? 1 : 0}:${options.transparent ? 1 : 0}:${options.texture?.uuid ?? ''}:${shade}:${options.unlit ? 1 : 0}`;
+        const key = `solid:${hex}:${options.edge ? 1 : 0}:${options.transparent ? 1 : 0}:${options.texture?.uuid ?? ''}:${shade}:${options.unlit ? 1 : 0}:${options.vertexColor ? 1 : 0}`;
         return this.getOrCreate(key, () => {
             const defines: Record<string, boolean> = { USE_INSTANCING: true };
             if (options.edge) defines.USE_EDGE = true;
             if (options.texture) defines.USE_TEXTURE = true;
+            if (options.vertexColor) defines.USE_VERTEX_COLOR = true;
             const color = new Color().fromHEX(hex);
             color.set(Math.round(color.r * shade), Math.round(color.g * shade), Math.round(color.b * shade), color.a);
             const mat = this.create(options.transparent ? TECH_TRANSPARENT : TECH_OPAQUE, defines, color);

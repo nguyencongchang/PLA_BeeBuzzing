@@ -2,7 +2,7 @@ import { Node, Quat, Vec3 } from 'cc';
 import { BeeParts, ModelKit } from '../rendering/ModelKit';
 import { BeeFlightPath } from './BeeFlightPath';
 import { BeeLaunchRoute } from './BeeLaunchRoute';
-import { CubeStreak } from './BeeEffects';
+import { CubeStreak, STREAK_LINE_COUNT } from './BeeEffects';
 
 const FLAP_SPEED = 48;
 const FLAP_ANGLE = 42;
@@ -50,7 +50,7 @@ export class BeePool {
             if (bee.color !== color) this.kit.paintBee(bee.parts.body, color);
         } else {
             const parts = this.kit.createBee(color);
-            const streak = new CubeStreak(this.kit.createStreak());
+            const streak = new CubeStreak(this.kit.createStreak(STREAK_LINE_COUNT));
             streak.node.setParent(this.parent);
             parts.root.setParent(this.parent);
             parts.root.children[0].setRotationFromEuler(0, BEE_MODEL_YAW, 0);
