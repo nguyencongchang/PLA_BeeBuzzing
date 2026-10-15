@@ -10,6 +10,9 @@ export class HiveTapRejectedSignal {
     constructor(public readonly line: number, public readonly reason: 'empty-line' | 'slots-full') {}
 }
 
+/** A bee pulled a cube out of the sculpture. */
+export class CubePluckedSignal {}
+
 export class BeeLaunchedSignal {
     constructor(public readonly color: number) {}
 }

@@ -10,6 +10,8 @@ export class Constant {
         LOSE: 'Lose',            // Âm thanh khi thua
         INPUT: 'Input',          // Âm thanh input
         SHOOT: 'shoot',          // Âm thanh bắn
+        REJECT: 'Reject',        // Chạm tổ ong không được (hết slot / hàng trống)
+        PLUCK: 'Pluck',          // Ong rút cube ra khỏi khối
         DEFAULT: ''
     }
 

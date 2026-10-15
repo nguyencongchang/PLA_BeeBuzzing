@@ -14,7 +14,12 @@ import { GameplayConfig } from './GameplayConfig';
 import { GameTime } from './GameTime';
 import { GameOutcomeMonitor } from './GameOutcomeMonitor';
 import {
-    BeeLaunchedSignal, GameOutcomeSignal, HiveActivatedSignal, HiveTapRejectedSignal, RotateHintSignal,
+    BeeLaunchedSignal,
+    CubePluckedSignal,
+    GameOutcomeSignal,
+    HiveActivatedSignal,
+    HiveTapRejectedSignal,
+    RotateHintSignal,
 } from './GameplaySignals';
 
 const { ccclass } = _decorator;
@@ -169,6 +174,7 @@ export class GameplayController extends Component {
         grid.remove(target);
         this.reserved[target] = 0;
         sculpture.markCellRemoved(target);
+        SignalBus.instance.fire(new CubePluckedSignal());
         if (grid.aliveCount === 0) this.finish('win', WIN_DELAY);
     }
 
