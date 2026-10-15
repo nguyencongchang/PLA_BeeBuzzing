@@ -85,8 +85,9 @@ export class LoadingDecor {
      */
     private coverCanvas(): void {
         const {root, background} = this.parts;
-        const frame = screen.windowSize, dpr = screen.devicePixelRatio;
-        const width = frame.width / dpr / view.getScaleX(), height = frame.height / dpr / view.getScaleY();
+        // windowSize and the view scale are both in device pixels: their ratio is the canvas in design units.
+        const frame = screen.windowSize;
+        const width = frame.width / view.getScaleX(), height = frame.height / view.getScaleY();
         const rect = background?.spriteFrame?.originalSize;
         const aspect = rect && rect.height > 0 ? rect.width / rect.height : width / height;
         const widget = root.getComponent(Widget);
