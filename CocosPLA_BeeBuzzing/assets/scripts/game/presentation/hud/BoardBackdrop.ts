@@ -24,6 +24,8 @@ const HIVE_H = 182;
 const HIVE_TOP = -6;
 /** Entrance hole center, as a fraction of the sprite height below its center. */
 const HIVE_ENTRANCE_Y = 0.42;
+/** Entrance hole width as a fraction of the sprite width (hive-hanging.png: 50 of 262 px). */
+const HIVE_ENTRANCE_W = 0.19;
 /** Anchored at its top edge so squash/wobble pivots where it hangs from the leaves. */
 const HIVE_ANCHOR_Y = 1;
 
@@ -114,12 +116,12 @@ export class BoardBackdrop extends Component {
 
     /**
      * World position of the hive entrance hole at world depth `planeZ` (default: the board plane),
-     * or null without a BG camera. The hive is UI on the BG canvas, so the hole is projected to
+     * or null without a BG camera. `across` (-1..1) picks a point across the hole, -1/1 its rims. The hive is UI on the BG canvas, so the hole is projected to
      * screen and back into 3D: every depth gives a point that shows exactly on the hole.
      */
-    hiveEntrance(out: Vec3, planeZ = this.worldRoot.worldPosition.z): Vec3 | null {
+    hiveEntrance(out: Vec3, planeZ = this.worldRoot.worldPosition.z, across = 0): Vec3 | null {
         if (!this.hive || !this.bgCamera) return null;
-        this.tmp.set(0, -HIVE_H * (HIVE_ANCHOR_Y - 0.5 + HIVE_ENTRANCE_Y), 0);
+        this.tmp.set(across * HIVE_W * HIVE_ENTRANCE_W / 2, -HIVE_H * (HIVE_ANCHOR_Y - 0.5 + HIVE_ENTRANCE_Y), 0);
         Vec3.transformMat4(this.tmp, this.tmp, this.hive.worldMatrix);
         this.bgCamera.worldToScreen(this.tmp, this.a);
         this.camera.screenPointToRay(this.a.x, this.a.y, this.ray);
