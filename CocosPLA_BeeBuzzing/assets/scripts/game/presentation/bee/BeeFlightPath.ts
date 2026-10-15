@@ -106,31 +106,3 @@ export function buildApproachPath(
     outCenter.set(c[0], c[1], c[2]);
     outFaceDir.set(fx, fy, -fz); // grid Z is mirrored in local space
 }
-
-/** Point on a quadratic Bezier. */
-export function bezier(out: Vec3, a: Vec3, c: Vec3, b: Vec3, t: number): Vec3 {
-    const u = 1 - t;
-    return out.set(
-        u * u * a.x + 2 * u * t * c.x + t * t * b.x,
-        u * u * a.y + 2 * u * t * c.y + t * t * b.y,
-        u * u * a.z + 2 * u * t * c.z + t * t * b.z,
-    );
-}
-
-/** Cheap quadratic Bezier length estimate (mean of chord and control polygon). */
-export function bezierLength(a: Vec3, c: Vec3, b: Vec3): number {
-    return (Vec3.distance(a, b) + Vec3.distance(a, c) + Vec3.distance(c, b)) / 2;
-}
-
-/** The home arc's control point sits this far (0..1) up from the start, under the hive. */
-const HOME_RISE = 0.45;
-
-/**
- * Flight home: curves over to directly under the hive, then rises vertically through the
- * entrance (control point straight below the target → vertical final tangent, as in the
- * reference). Returns the arc length estimate.
- */
-export function homeArc(from: Vec3, to: Vec3, outCtrl: Vec3): number {
-    outCtrl.set(to.x, from.y + (to.y - from.y) * HOME_RISE, (from.z + to.z) / 2);
-    return bezierLength(from, outCtrl, to);
-}

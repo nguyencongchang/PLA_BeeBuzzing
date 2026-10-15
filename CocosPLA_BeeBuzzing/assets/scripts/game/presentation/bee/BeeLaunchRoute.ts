@@ -1,32 +1,27 @@
 import { Vec3 } from 'cc';
+import { gateDoor, RouteAnchor, walkRounded } from './FreeFlightRoute';
 
 /** Height of the horizontal leg above the hive (≈ the model's base / shadow level). */
 const GLIDE_HEIGHT = 0.65;
 /** Per-bee height scatter of the horizontal leg so bees don't stack on one line. */
 const GLIDE_JITTER = 0.22;
-/** Radius of the rounded turns at both corners (world units). */
-const TURN_RADIUS = 0.35;
 
 /** Share of bees that swing out wide (away from the model) before looping back, as in the reference. */
 const WIDE_SHARE = 0.45;
-/** Wide loop: initial rise, then out (away from the model), up and away from the camera. */
-const WIDE_RISE = 0.45;
+/** Wide loop, drawn in the free plane beside the model: out sideways and up, then back. */
 const WIDE_OUT = 2.2;
 const WIDE_LIFT = 1.3;
-const WIDE_DEPTH = 2.0;
 /** Per-bee scale scatter of the wide loop. */
 const WIDE_JITTER = 0.35;
-/** Chord samples used to measure the loop's length. */
+/** Points sampled along the loop curve. */
 const LOOP_SAMPLES = 10;
 
-const entry = new Vec3();
-const exit = new Vec3();
-const p = new Vec3();
-const q = new Vec3();
-const cursor = new Vec3();
+const door = new Vec3();
+const c1 = new Vec3();
 const c2 = new Vec3();
-const prev = new Vec3();
-const pts: Vec3[] = [];
+const doorSide = new Vec3();
+const across = new Vec3();
+let warnedLowModel = false;
 
 /** Point on a cubic Bezier. */
 function cubic(out: Vec3, a: Vec3, b: Vec3, c: Vec3, d: Vec3, t: number): Vec3 {
@@ -40,106 +35,82 @@ function cubic(out: Vec3, a: Vec3, b: Vec3, c: Vec3, d: Vec3, t: number): Vec3 {
 
 /**
  * Launch routes from the reference. Every bee pops straight up out of the hive, then either
- * - glides level across the floor to below its target and climbs to it (rounded corners), or
- * - swings out wide: away from the model, up and into the distance, looping back to its target.
- * The fixed waypoints are set at launch; the end follows the live (rotating) target every frame.
+ * - glides level under the model to below its target and climbs to it, or
+ * - swings out wide (sideways and up) and loops back to its target.
+ * Both are built from the sculpture's free zones (see SculptureClearance): the rise and the glide stay
+ * under the model, the climb / loop happen beside it on the side the target faces (in front, for
+ * camera-facing targets), and the last leg reaches the gate through the door on that side. The end follows the live (spinning) target, so the route is rebuilt every frame.
  */
 export class BeeLaunchRoute {
-    /** Top of the vertical rise. */
-    readonly rise = new Vec3();
-    /** Level route: end of the level leg, below the target. Wide route: first loop control. */
-    readonly under = new Vec3();
-    /** Wide route: second loop control, as an offset from the live target. */
-    readonly loopOffset = new Vec3();
+    private readonly pts: Vec3[] = [];
+    private readonly pool: Vec3[] = [];
     private wide = false;
+    private glide = 0;
+    private loopScale = 1;
+    private away = 1;
 
-    /** Fixes the route from the hive top `from` toward the current path start `to`. */
+    /** Picks this bee's route style from the hive top `from` towards the first target `to`. */
     build(from: Vec3, to: Vec3): void {
         this.wide = Math.random() < WIDE_SHARE;
-        if (!this.wide) {
-            const glideY = Math.min(from.y + GLIDE_HEIGHT + Math.random() * GLIDE_JITTER, to.y);
-            this.rise.set(from.x, glideY, from.z);
-            this.under.set(to.x, glideY, to.z);
-            return;
-        }
-        const away = -(Math.sign(to.x - from.x) || 1);
-        const k = 1 + (Math.random() - 0.5) * 2 * WIDE_JITTER;
-        this.rise.set(from.x, from.y + WIDE_RISE, from.z);
-        this.under.set(from.x + away * WIDE_OUT * k, this.rise.y + WIDE_LIFT * k, from.z - WIDE_DEPTH * k);
-        this.loopOffset.set(away * WIDE_OUT * 0.5 * k, WIDE_LIFT * 0.6 * k, -WIDE_DEPTH * 0.4 * k);
+        this.glide = GLIDE_HEIGHT + Math.random() * GLIDE_JITTER;
+        this.loopScale = 1 + (Math.random() - 0.5) * 2 * WIDE_JITTER;
+        this.away = -(Math.sign(to.x - from.x) || 1);
     }
 
-    /** Total length (world units) to the live end `to`. */
-    length(from: Vec3, to: Vec3): number {
-        return this.wide ? this.walkLoop(from, to, Number.POSITIVE_INFINITY, null) : this.walk(from, to, Number.POSITIVE_INFINITY, null);
+    get isWide(): boolean {
+        return this.wide;
     }
 
-    /** Position at distance `s` along the route to the live end `to`. */
-    sample(from: Vec3, to: Vec3, s: number, out: Vec3): Vec3 {
-        if (this.wide) this.walkLoop(from, to, s, out);
-        else this.walk(from, to, s, out);
+    /** Total length (world units) to the live gate. */
+    length(from: Vec3, anchor: RouteAnchor): number {
+        return walkRounded(this.points(from, anchor), Number.POSITIVE_INFINITY, null);
+    }
+
+    /** Position at distance `s` along the route to the live gate. */
+    sample(from: Vec3, anchor: RouteAnchor, s: number, out: Vec3): Vec3 {
+        walkRounded(this.points(from, anchor), s, out);
         return out;
     }
 
-    /** Wide route: straight rise, then a cubic loop rise → (out, up, away) → back to `to`. */
-    private walkLoop(from: Vec3, to: Vec3, s: number, out: Vec3 | null): number {
-        const riseLen = Vec3.distance(from, this.rise);
-        if (out && s <= riseLen) {
-            Vec3.lerp(out, from, this.rise, riseLen > 0 ? s / riseLen : 1);
-            return s;
+    private points(from: Vec3, anchor: RouteAnchor): Vec3[] {
+        this.pts.length = 0;
+        const c = anchor.clearance;
+        // Rise and glide stay under the model (a lower glide only when the model hangs that low).
+        const glide = Math.min(c.along(from) + this.glide, c.belowLevel);
+        if (glide < c.along(from) && !warnedLowModel) {
+            warnedLowModel = true;
+            console.warn('[BeeLaunchRoute] sculpture reaches down to the hives; bees may cross its base');
         }
-        Vec3.add(c2, to, this.loopOffset);
-        let travelled = riseLen;
-        prev.set(this.rise);
-        for (let i = 1; i <= LOOP_SAMPLES; i++) {
-            cubic(p, this.rise, this.under, c2, to, i / LOOP_SAMPLES);
-            const seg = Vec3.distance(prev, p);
-            if (out && s <= travelled + seg) {
-                Vec3.lerp(out, prev, p, seg > 0 ? (s - travelled) / seg : 1);
-                return s;
-            }
-            travelled += seg;
-            prev.set(p);
+        gateDoor(anchor, door, doorSide);
+        this.add(from);
+        const rise = this.add(c.withAlong(from, glide, this.next()));
+        if (this.wide) {
+            // Loop in the door's side plane: across it (screen-sideways for the camera side) and up the axis.
+            const start = this.add(c.withAhead(rise, doorSide, c.sideLevel, this.next()));
+            const k = this.loopScale;
+            Vec3.cross(across, c.axis, doorSide);
+            Vec3.multiplyScalar(across, across, (Math.sign(across.x) || 1) * this.away * WIDE_OUT * k);
+            Vec3.scaleAndAdd(c1, Vec3.add(c1, start, across), c.axis, WIDE_LIFT * k);
+            Vec3.scaleAndAdd(c2, Vec3.scaleAndAdd(c2, door, across, 0.5), c.axis, WIDE_LIFT * 0.6 * k);
+            for (let i = 1; i < LOOP_SAMPLES; i++) this.pts.push(cubic(this.next(), start, c1, c2, door, i / LOOP_SAMPLES));
+        } else {
+            this.add(c.withAlong(door, glide, this.next()));
         }
-        if (out) out.set(to);
-        return travelled;
+        this.add(door);
+        this.add(anchor.gate);
+        return this.pts;
     }
 
-    /** Level route: straight pieces and corner fillets (from → rise → under → to). */
-    private walk(from: Vec3, to: Vec3, s: number, out: Vec3 | null): number {
-        pts.length = 0;
-        pts.push(from, this.rise, this.under, to);
-        cursor.set(from);
-        let travelled = 0;
-        for (let i = 1; i < pts.length; i++) {
-            const corner = pts[i];
-            const last = i === pts.length - 1;
-            const inLen = Vec3.distance(pts[i - 1], corner);
-            const outLen = last ? 0 : Vec3.distance(corner, pts[i + 1]);
-            const r = last ? 0 : Math.min(TURN_RADIUS, inLen / 2, outLen / 2);
-            Vec3.lerp(entry, corner, pts[i - 1], inLen > 0 ? r / inLen : 0);
+    /** Next pooled point (not yet part of the route). */
+    private next(): Vec3 {
+        while (this.pool.length <= this.pts.length) this.pool.push(new Vec3());
+        return this.pool[this.pts.length];
+    }
 
-            const straight = Vec3.distance(cursor, entry);
-            if (out && s <= travelled + straight) {
-                Vec3.lerp(out, cursor, entry, straight > 0 ? (s - travelled) / straight : 1);
-                return s;
-            }
-            travelled += straight;
-            if (last) break;
-
-            Vec3.lerp(exit, corner, pts[i + 1], outLen > 0 ? r / outLen : 0);
-            const arc = (Vec3.distance(entry, corner) + Vec3.distance(corner, exit) + Vec3.distance(entry, exit)) / 2;
-            if (out && s <= travelled + arc) {
-                const t = arc > 0 ? (s - travelled) / arc : 1;
-                Vec3.lerp(p, entry, corner, t);
-                Vec3.lerp(q, corner, exit, t);
-                Vec3.lerp(out, p, q, t);
-                return s;
-            }
-            travelled += arc;
-            cursor.set(exit);
-        }
-        if (out) out.set(to);
-        return travelled;
+    private add(v: Vec3): Vec3 {
+        const slot = this.next();
+        if (slot !== v) slot.set(v);
+        this.pts.push(slot);
+        return slot;
     }
 }

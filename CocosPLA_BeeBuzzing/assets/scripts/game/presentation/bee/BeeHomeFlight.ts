@@ -1,7 +1,7 @@
 import { math, Vec3 } from 'cc';
-import { bezier, homeArc } from './BeeFlightPath';
 import { Bee } from './BeePool';
 import { tumble } from './BeeEffects';
+import { gateDoor, RouteAnchor, walkRounded } from './FreeFlightRoute';
 
 /** Fraction of the home flight spent shrinking as the bee disappears inside the hive. */
 const ENTER_FRACTION = 0.15;
@@ -12,22 +12,41 @@ const ENTER_DEPTH = 0.35;
 const CUBE_HANG = 0.14;
 
 const hang = new Vec3();
+const side = new Vec3();
+let warnedLowHive = false;
 
-/** Sets up the flight home from `from` to the hive entrance (`entrance` writes it into its arg). */
-export function startHomeFlight(bee: Bee, from: Vec3, entrance: (out: Vec3) => Vec3): void {
-    bee.leaveFrom.set(from);
-    entrance(bee.leaveTo).y += ENTER_DEPTH;
-    bee.s = homeArc(bee.leaveFrom, bee.leaveTo, bee.leaveCtrl);
+/**
+ * Sets up the flight home from the gate, built from the sculpture's free zones (see
+ * SculptureClearance): out through the gate's door, up beside the model to above it, across over
+ * it to under the hive, then straight up through the entrance (vertical entry, as in the reference).
+ * The route is fixed in world space; its legs are spin-proof except the short one by the gate.
+ */
+export function startHomeFlight(bee: Bee, anchor: RouteAnchor, entrance: (out: Vec3) => Vec3): void {
+    const [gate, door, front, over, hive] = bee.home;
+    gate.set(anchor.gate);
+    gateDoor(anchor, door, side);
+    entrance(hive).y += ENTER_DEPTH;
+    const c = anchor.clearance;
+    // Over the model the carried cube hangs below the bee: keep it clear as well.
+    const above = c.aboveLevel + 2 * CUBE_HANG;
+    if (c.along(hive) < above && !warnedLowHive) {
+        warnedLowHive = true;
+        console.warn('[BeeHomeFlight] hive entrance is level with the sculpture; bees may cross its top');
+    }
+    const level = Math.min(above, c.along(hive));
+    c.withAlong(hive, level, over);
+    c.withAlong(c.withAhead(over, side, c.sideLevel, front), Math.max(level, c.along(door)), front);
+    bee.s = walkRounded(bee.home, Number.POSITIVE_INFINITY, null);
 }
 
 /**
- * One frame of the flight home carrying the cube, up through the entrance into the hive (the
- * front hive layer hides it once inside), shrinking slightly at the very end. Writes the bee
- * position into `pos`; returns true once the bee is inside.
+ * One frame of the flight home carrying the cube, into the hive (the front hive layer hides it once
+ * inside), shrinking slightly at the very end. Writes the bee position into `pos`; returns true once
+ * the bee is inside.
  */
 export function stepHomeFlight(bee: Bee, speed: number, dt: number, cubeScale: number, pos: Vec3): boolean {
     const t = math.clamp01((bee.timer * speed) / bee.s);
-    bezier(pos, bee.leaveFrom, bee.leaveCtrl, bee.leaveTo, t * (2 - t));
+    walkRounded(bee.home, bee.s * t * (2 - t), pos);
     const k = t < 1 - ENTER_FRACTION ? 1 : math.lerp(1, ENTER_SCALE, (t - 1 + ENTER_FRACTION) / ENTER_FRACTION);
     bee.parts.root.setScale(k, k, k);
     const cube = bee.cube!;

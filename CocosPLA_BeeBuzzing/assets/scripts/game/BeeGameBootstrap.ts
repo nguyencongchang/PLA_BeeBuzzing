@@ -119,7 +119,7 @@ export class BeeGameBootstrap extends Component {
         hives.init(board, kit, this.camera, labelRoot, font);
 
         const swarm = createChild(this.world, 'Bees').addComponent(BeeSwarm);
-        swarm.init(kit, sculpture);
+        swarm.init(kit, sculpture, grid);
         swarm.beeSpeed = config.beeSpeed;
 
         const controller = this.node.addComponent(GameplayController);

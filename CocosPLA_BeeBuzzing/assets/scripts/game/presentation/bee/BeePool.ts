@@ -23,14 +23,13 @@ export interface Bee {
     cube: Node | null;
     flap: number;
     readonly start: Vec3;
-    /** Hive → rise → level glide → climb route to the path start (world). */
+    /** Hive → path start route (world), see BeeLaunchRoute. */
     readonly launch: BeeLaunchRoute;
     readonly path: BeeFlightPath;
     readonly center: Vec3;   // target cube center, sculpture-local
     readonly faceDir: Vec3;  // local unit vector out of the grabbed face
-    readonly leaveFrom: Vec3;
-    readonly leaveCtrl: Vec3;
-    readonly leaveTo: Vec3;
+    /** Home route (world): gate, front door, in front above the model, over it, hive. */
+    readonly home: Vec3[];
     readonly prev: Vec3;
     /** Light streak behind the cube while it is pulled out. */
     readonly streak: CubeStreak;
@@ -58,7 +57,7 @@ export class BeePool {
             bee = {
                 parts, color, phase: 0, timer: 0, s: 0, leadLength: 0, target: -1, cube: null,
                 flap: Math.random() * 10, start: new Vec3(), launch: new BeeLaunchRoute(), path: new BeeFlightPath(), center: new Vec3(),
-                faceDir: new Vec3(), leaveFrom: new Vec3(), leaveCtrl: new Vec3(), leaveTo: new Vec3(), prev: new Vec3(), streak,
+                faceDir: new Vec3(), home: [new Vec3(), new Vec3(), new Vec3(), new Vec3(), new Vec3()], prev: new Vec3(), streak,
             };
         }
         bee.color = color;

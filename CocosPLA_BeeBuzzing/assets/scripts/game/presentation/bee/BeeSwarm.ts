@@ -1,11 +1,14 @@
 import { _decorator, Component, math, Vec3 } from 'cc';
 import { GameTime } from '../../application/GameTime';
+import { VoxelGrid } from '../../domain/VoxelGrid';
 import { ModelKit } from '../rendering/ModelKit';
 import { SculptureView } from '../sculpture/SculptureView';
 import { buildApproachPath } from './BeeFlightPath';
 import { startHomeFlight, stepHomeFlight } from './BeeHomeFlight';
 import { Bee, BeePool, clingBee, poseBee } from './BeePool';
 import { tumble } from './BeeEffects';
+import { RouteAnchor } from './FreeFlightRoute';
+import { SculptureClearance } from './SculptureClearance';
 
 const { ccclass } = _decorator;
 
@@ -63,11 +66,15 @@ export class BeeSwarm extends Component {
     private pool: BeePool = null!;
     private readonly active: Bee[] = [];
     private pending = 0;
+    /** Live gate / exit the free-flight routes attach to (refreshed per bee). */
+    private anchor: RouteAnchor & { gate: Vec3; exit: Vec3 } = null!;
     private readonly pos = new Vec3();
     private readonly tmp = new Vec3();
 
-    init(kit: ModelKit, sculpture: SculptureView): void {
+    init(kit: ModelKit, sculpture: SculptureView, grid: VoxelGrid): void {
         this.sculpture = sculpture;
+        const clearance = new SculptureClearance(sculpture.node, grid, sculpture.gridSpace);
+        this.anchor = { gate: new Vec3(), exit: new Vec3(), clearance };
         // Carried cubes match the on-screen cube size (sculpture may be scaled).
         this.pool = new BeePool(kit, this.node, sculpture.gridSpace.cellSize * sculpture.node.scale.x);
     }
@@ -90,7 +97,7 @@ export class BeeSwarm extends Component {
         bee.phase = APPROACH;
         bee.s = bee.timer = 0;
         bee.start.set(req.from);
-        bee.launch.build(req.from, bee.path.pointWorld(0, this.sculpture.node.worldMatrix, this.tmp));
+        bee.launch.build(req.from, this.anchorTo(bee).gate);
         bee.prev.set(req.from);
         bee.parts.root.setWorldPosition(req.from);
         bee.parts.root.setScale(1, 1, 1);
@@ -121,10 +128,10 @@ export class BeeSwarm extends Component {
             case APPROACH: {
                 bee.s += speed * dt;
                 // The route's end follows the rotating model, so its length is re-measured each frame.
-                bee.path.pointWorld(0, world, this.tmp);
-                bee.leadLength = bee.launch.length(bee.start, this.tmp);
+                const anchor = this.anchorTo(bee);
+                bee.leadLength = bee.launch.length(bee.start, anchor);
                 if (bee.s < bee.leadLength) {
-                    bee.launch.sample(bee.start, this.tmp, bee.s, this.pos);
+                    bee.launch.sample(bee.start, anchor, bee.s, this.pos);
                     // Emerging from the hive: grows from small to full size over the first stretch.
                     const k = Math.min(1, EMERGE_MIN_SCALE + (1 - EMERGE_MIN_SCALE) * bee.s / EMERGE_DISTANCE);
                     bee.parts.root.setScale(k, k, k);
@@ -177,7 +184,7 @@ export class BeeSwarm extends Component {
                 bee.cube!.setWorldPosition(this.tmp);
                 if (bee.streak.active) bee.streak.update(this.tmp, dt);
                 tumble(bee.cube!, dt);
-                if (bee.s <= 0) { startHomeFlight(bee, this.pos, this.hiveEntrance); this.enter(bee, LEAVE); }
+                if (bee.s <= 0) { startHomeFlight(bee, this.anchorTo(bee), this.hiveEntrance); this.enter(bee, LEAVE); }
                 break;
             }
             case LEAVE:
@@ -197,6 +204,14 @@ export class BeeSwarm extends Component {
         bee.phase = phase;
         bee.timer = 0;
         if (phase !== GRAB && phase !== LEAVE) bee.parts.root.setScale(1, 1, 1);
+    }
+
+    /** Points the shared route anchor at this bee's live gate and exit direction. */
+    private anchorTo(bee: Bee): RouteAnchor {
+        const a = this.anchor, world = this.sculpture.node.worldMatrix;
+        bee.path.pointWorld(0, world, a.gate);
+        Vec3.subtract(a.exit, a.gate, bee.path.pointWorld(1, world, this.tmp)).normalize();
+        return a;
     }
 
     private localToWorld(center: Vec3, dir: Vec3, dist: number, out: Vec3): Vec3 {
