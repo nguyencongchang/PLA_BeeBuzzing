@@ -188,7 +188,7 @@
       "a": 255
     },
     "_spriteFrame": {
-      "__uuid__": "4a2eaec0-02db-45fe-ba6d-7038ff6eaa88@f9941",
+      "__uuid__": "9a464eda-2d10-4de1-b941-0f561f1dc129@f9941",
       "__expectedType__": "cc.SpriteFrame"
     },
     "_type": 0,
@@ -764,7 +764,7 @@
       "b": 0,
       "a": 255
     },
-    "_string": "Name Game",
+    "_string": "Bee Buzzing",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
     "_actualFontSize": 40,
@@ -1046,13 +1046,13 @@
     "_dstBlendFactor": 4,
     "_color": {
       "__type__": "cc.Color",
-      "r": 74,
-      "g": 159,
-      "b": 248,
+      "r": 255,
+      "g": 255,
+      "b": 255,
       "a": 255
     },
     "_spriteFrame": {
-      "__uuid__": "7d8f9b89-4fd1-4c9f-a3ab-38ec7cded7ca@f9941",
+      "__uuid__": "3ab94450-343d-47ea-8526-95478203b152@f9941",
       "__expectedType__": "cc.SpriteFrame"
     },
     "_type": 0,

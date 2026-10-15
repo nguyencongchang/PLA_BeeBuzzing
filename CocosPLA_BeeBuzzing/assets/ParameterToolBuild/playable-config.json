@@ -100,7 +100,7 @@
       "label": "Fire Interval (s)",
       "type": "range",
       "category": "Gameplay",
-      "default": 0.05,
+      "default": 0.16,
       "min": 0.02,
       "max": 0.3,
       "step": 0.01
@@ -109,8 +109,8 @@
       "label": "Bee Speed",
       "type": "range",
       "category": "Gameplay",
-      "default": 16,
-      "min": 6,
+      "default": 3,
+      "min": 2,
       "max": 30,
       "step": 1
     },
@@ -127,7 +127,7 @@
       "label": "Initial Tilt",
       "type": "range",
       "category": "Gameplay",
-      "default": 25,
+      "default": 10,
       "min": -30,
       "max": 60,
       "step": 1
@@ -137,6 +137,12 @@
       "type": "boolean",
       "category": "Gameplay",
       "default": true
+    },
+    "LevelJson": {
+      "label": "Level (.level.json)",
+      "type": "text",
+      "category": "Gameplay",
+      "default": ""
     },
     "MusicVolume": {
       "label": "Music Volume",
@@ -229,8 +235,8 @@
           "label": "Position",
           "type": "coordinates",
           "default": {
-            "x": -350,
-            "y": 775
+            "x": 350,
+            "y": -775
           },
           "x": {
             "min": -2000,
@@ -377,7 +383,7 @@
       "label": "Loading Background Color",
       "type": "color",
       "category": "Loading",
-      "default": "#4A9FF8"
+      "default": "#FFFFFF"
     },
     "LoadingIcon": {
       "label": "Loading Icon",
@@ -468,7 +474,7 @@
         "string": {
           "label": "String",
           "type": "text",
-          "default": "Game"
+          "default": "Bee Buzzing"
         },
         "color": {
           "label": "Color",
@@ -757,6 +763,30 @@
             "prompt": "Ẩn nút tăng tốc",
             "changes": [
               "SpeedButton = false"
+            ]
+          }
+        ]
+      },
+      "LevelJson": {
+        "description": "Khối block của màn chơi: dán nội dung .level.json (Bee Level Viewer → Copy .level.json). Để trống = level mặc định (teddy).",
+        "aliases": [
+          "level",
+          "màn chơi",
+          "khối",
+          "block",
+          "sculpture",
+          "level json"
+        ],
+        "aiHints": [
+          "Chỉ nhận định dạng .level.json đã nén (v: 1), không nhận editor JSON.",
+          "Áp dụng khi màn chơi bắt đầu; JSON sai định dạng hoặc số ong không khớp số cube thì game báo lỗi và dùng level mặc định.",
+          "Nên chọn level 500–1000 cube để màn chơi dài 30–60 giây."
+        ],
+        "examples": [
+          {
+            "prompt": "Dùng level trái tim",
+            "changes": [
+              "LevelJson = <nội dung 02_heart.level.json>"
             ]
           }
         ]

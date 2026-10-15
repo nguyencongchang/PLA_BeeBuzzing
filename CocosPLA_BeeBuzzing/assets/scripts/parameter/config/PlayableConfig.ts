@@ -51,7 +51,7 @@ export const PlayableConfig = {
     SlotCount: new RangeParameter("Slot Count", DEFAULT_GAMEPLAY_CONFIG.slotCount, {min: 3, max: 7, step: 1}, Categories.Gameplay),
     MaxTurns: new RangeParameter("Bee Max 90° Turns", DEFAULT_GAMEPLAY_CONFIG.maxTurns, {min: 0, max: 4, step: 1}, Categories.Gameplay),
     FireInterval: new RangeParameter("Fire Interval (s)", DEFAULT_GAMEPLAY_CONFIG.fireInterval, {min: 0.02, max: 0.3, step: 0.01}, Categories.Gameplay),
-    BeeSpeed: new RangeParameter("Bee Speed", DEFAULT_GAMEPLAY_CONFIG.beeSpeed, {min: 6, max: 30, step: 1}, Categories.Gameplay),
+    BeeSpeed: new RangeParameter("Bee Speed", DEFAULT_GAMEPLAY_CONFIG.beeSpeed, {min: 2, max: 30, step: 1}, Categories.Gameplay),
     AutoRotateSpeed: new RangeParameter("Auto Rotate Speed", DEFAULT_GAMEPLAY_CONFIG.autoRotateSpeed, {min: 0, max: 40, step: 1}, Categories.Gameplay),
     InitialTilt: new RangeParameter("Initial Tilt", DEFAULT_GAMEPLAY_CONFIG.initialTilt, {min: -30, max: 60, step: 1}, Categories.Gameplay),
     SpeedButton: new BooleanParameter("X2 Speed Button", DEFAULT_GAMEPLAY_CONFIG.speedButtonEnabled, Categories.Gameplay),
@@ -72,7 +72,7 @@ export const PlayableConfig = {
     // cta Button (ButtonParameter = SpriteParameter + label fields với prefix)
     CTA: new ObjectParameter<ButtonParameter>("cta Button", new ButtonParameter({
         enable: true,
-        position: {x: -350, y: 775},       // top-left, mirrors the X2 SPEED button
+        position: {x: 350, y: -775},       // bottom-right, mirrors the X2 SPEED button
         spriteColor: "#FF5500",              // sprite color (từ SpriteParameter)
         string: "Install Now",    // label text
         labelColor: "#FFFFFF",         // label color
@@ -95,7 +95,7 @@ export const PlayableConfig = {
     }), Categories.Tutorial),
 
     // === Loading Screen Parameters ===
-    LoadingBackgroundColor: new ColorParameter("Loading Background Color", "#4A9FF8", Categories.Loading),
+    LoadingBackgroundColor: new ColorParameter("Loading Background Color", "#FFFFFF", Categories.Loading),
     LoadingIcon: new ObjectParameter<SpriteParameter>("Loading Icon", new SpriteParameter({
         position: {x: 0, y: 120},
         contentSize: {x: 200, y: 200},
@@ -104,7 +104,7 @@ export const PlayableConfig = {
     }), Categories.Loading),
     LoadingGameName: new ObjectParameter<LabelParameter>("Loading Game Name", new LabelParameter({
         position: {x: 0, y: 319.224},
-        string: "Game",
+        string: "Bee Buzzing",
         labelColor: "#FFFFFF",
         fontSize: 60,
     }), Categories.Loading),
