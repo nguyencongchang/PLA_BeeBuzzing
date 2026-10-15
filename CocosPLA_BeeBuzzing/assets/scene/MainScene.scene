@@ -512,7 +512,7 @@
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 2155.448798988622,
+      "width": 3065.4077253218884,
       "height": 1920
     },
     "_anchorPoint": {
@@ -1730,7 +1730,7 @@
     "propertyPath": [
       "_enabled"
     ],
-    "value": false
+    "value": true
   },
   {
     "__type__": "cc.TargetInfo",
