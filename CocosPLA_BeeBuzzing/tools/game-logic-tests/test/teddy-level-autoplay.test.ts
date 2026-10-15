@@ -76,6 +76,13 @@ test('teddy level is solvable by a greedy player with 5 slots', () => {
     assert.fail('autoplay did not terminate');
 });
 
+/**
+ * Average solve budget (ms). CI agents run as background services, which macOS schedules on the
+ * efficiency cores (~10x slower), so Jenkins passes a larger SOLVER_BUDGET_MS; it still catches
+ * a solver that regresses several-fold.
+ */
+const SOLVER_BUDGET_MS = Number(process.env.SOLVER_BUDGET_MS ?? 8);
+
 test('solver performance on the teddy grid stays within a frame budget', () => {
     const level = decodeLevel(JSON.parse(fs.readFileSync(LEVEL_PATH, 'utf8')));
     const grid = new VoxelGrid(level.width, level.height, level.depth, level.cells);
@@ -85,5 +92,5 @@ test('solver performance on the teddy grid stays within a frame budget', () => {
     for (let i = 0; i < 20; i++) solver.solve((1 << 4) | (1 << 2));
     const avg = (performance.now() - t0) / 20;
     console.log(`  avg solve: ${avg.toFixed(2)} ms`);
-    assert.ok(avg < 8, `solve too slow: ${avg.toFixed(2)} ms`);
+    assert.ok(avg < SOLVER_BUDGET_MS, `solve too slow: ${avg.toFixed(2)} ms (budget ${SOLVER_BUDGET_MS} ms)`);
 });
