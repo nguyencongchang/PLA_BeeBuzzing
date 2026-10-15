@@ -3,14 +3,22 @@ import { CLEARANCE, SculptureClearance } from './SculptureClearance';
 
 /** Live world-space geometry the free-flight routes (hive → model, model → hive) attach to. */
 export interface RouteAnchor {
-    /** Start of the bee's grid path: a few cells outside the grid, beyond the exit face. */
+    /** Where the bee's grid path meets free flight: outside the grid, beyond the exit face. */
     readonly gate: Vec3;
     /** Unit direction in which the escape route leaves the grid (camera-facing by construction). */
     readonly exit: Vec3;
     readonly clearance: SculptureClearance;
+    /** Exact test: does the straight world segment a → b clear the sculpture (with margin)? */
+    readonly isClear: (a: Vec3, b: Vec3) => boolean;
 }
 
 const way = new Vec3();
+/**
+ * Weight of the exit direction in the door ray (side direction weight 1). Small, so bees turn out
+ * to the side right away instead of diving on along the exit; still > the largest |exit · side| of
+ * an exit along the axis (MIN_SIDEWAYS), so the ray keeps leaving the exit face.
+ */
+const EXIT_WEIGHT = 0.35;
 /** Below this share of the exit across the axis, the exit counts as going up / down the axis. */
 const MIN_SIDEWAYS = 0.2;
 
@@ -18,8 +26,8 @@ const MIN_SIDEWAYS = 0.2;
  * Where a bee crosses into the free zone beside the sculpture on its way to (or from) the gate, and
  * the side (`outSide`, unit, perpendicular to the axis) that zone lies on: the side the exit faces,
  * or the camera side when the exit runs along the axis. The door is on the ray from the gate along
- * exit + side, which keeps moving away from the exit face, so the leg to the gate never touches the
- * model — wherever the spin has turned the target.
+ * EXIT_WEIGHT * exit + side, which keeps moving away from the exit face, so the leg to the gate never
+ * touches the model — wherever the spin has turned the target.
  */
 export function gateDoor(a: RouteAnchor, out: Vec3, outSide: Vec3): Vec3 {
     const c = a.clearance;
@@ -28,7 +36,7 @@ export function gateDoor(a: RouteAnchor, out: Vec3, outSide: Vec3): Vec3 {
     outSide.normalize();
     const gap = c.sideLevel - c.ahead(a.gate, outSide);
     if (gap <= 0) return out.set(a.gate);
-    Vec3.add(way, a.exit, outSide).normalize();
+    Vec3.scaleAndAdd(way, outSide, a.exit, EXIT_WEIGHT).normalize();
     return Vec3.scaleAndAdd(out, a.gate, way, gap / Vec3.dot(way, outSide));
 }
 

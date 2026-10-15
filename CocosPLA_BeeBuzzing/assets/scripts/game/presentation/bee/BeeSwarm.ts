@@ -9,6 +9,7 @@ import { Bee, BeePool, clingBee, poseBee } from './BeePool';
 import { tumble } from './BeeEffects';
 import { RouteAnchor } from './FreeFlightRoute';
 import { SculptureClearance } from './SculptureClearance';
+import { SculptureSegmentCheck } from './SculptureSegmentCheck';
 
 const { ccclass } = _decorator;
 
@@ -79,7 +80,8 @@ export class BeeSwarm extends Component {
     init(kit: ModelKit, sculpture: SculptureView, grid: VoxelGrid): void {
         this.sculpture = sculpture;
         const clearance = new SculptureClearance(sculpture.node, grid, sculpture.gridSpace);
-        this.anchor = { gate: new Vec3(), exit: new Vec3(), clearance };
+        const segments = new SculptureSegmentCheck(sculpture.node, grid, sculpture.gridSpace);
+        this.anchor = { gate: new Vec3(), exit: new Vec3(), clearance, isClear: (a, b) => segments.isClear(a, b) };
         // Carried cubes match the on-screen cube size (sculpture may be scaled).
         this.pool = new BeePool(kit, this.node, sculpture.gridSpace.cellSize * sculpture.node.scale.x);
     }
@@ -178,15 +180,18 @@ export class BeeSwarm extends Component {
             }
             case CARRY: {
                 bee.s -= speed * dt;
+                // Carry back out only to the first cell outside the grid: the runway is for swooping in.
+                const exitS = bee.path.cumulativeWorld(1);
+                bee.s = Math.max(bee.s, exitS);
                 bee.path.sampleWorld(bee.s, world, this.pos);
                 const cubeS = Math.min(bee.s + CUBE_TRAIL_CELLS * cell * bee.path.unitScale, bee.path.length);
                 bee.path.sampleWorld(cubeS, world, this.tmp);
                 bee.cube!.setWorldPosition(this.tmp);
-                this.drawCarryTrail(bee, cubeS, cell);
+                this.drawCarryTrail(bee, cubeS, cubeS - exitS, cell);
                 tumble(bee.cube!, dt);
-                if (bee.s <= 0) {
+                if (bee.s <= exitS) {
                     bee.streak.stop();
-                    startHomeFlight(bee, this.anchorTo(bee), this.hiveEntrance);
+                    startHomeFlight(bee, this.anchorTo(bee, 1), this.hiveEntrance);
                     this.enter(bee, LEAVE);
                 }
                 break;
@@ -211,11 +216,12 @@ export class BeeSwarm extends Component {
     }
 
     /**
-     * Speed lines behind a cube carried along its path (cube at path distance `cubeS`, world). The
+     * Speed lines behind a cube carried along its path (cube at path distance `cubeS`, world, and
+     * `toEnd` short of where the carry ends). The
      * tail stays on the straight leg the cube is on — never across a corner, which could clip the
      * cube on its inside — except on the last leg, which runs straight out of the emptied socket.
      */
-    private drawCarryTrail(bee: Bee, cubeS: number, cell: number): void {
+    private drawCarryTrail(bee: Bee, cubeS: number, toEnd: number, cell: number): void {
         const path = bee.path, cellW = cell * path.unitScale;
         const wanted = cubeS + TRAIL_CELLS * cellW;
         const legEnd = path.legEnd(cubeS);
@@ -225,15 +231,18 @@ export class BeeSwarm extends Component {
             const intoSocket = Math.min((wanted - path.length) / path.unitScale, FACE_HOVER_CELLS * cell);
             this.localToWorld(bee.center, bee.faceDir, FACE_HOVER_CELLS * cell - intoSocket, this.pos);
         }
-        const fade = math.clamp01((cubeS / cellW - TRAIL_END_CELLS) / TRAIL_FADE_CELLS);
+        const fade = math.clamp01((toEnd / cellW - TRAIL_END_CELLS) / TRAIL_FADE_CELLS);
         bee.streak.draw(this.tmp, this.pos, cellW, fade);
     }
 
-    /** Points the shared route anchor at this bee's live gate and exit direction. */
-    private anchorTo(bee: Bee): RouteAnchor {
+    /**
+     * Points the shared route anchor at this bee's live exit direction and gate: path point `at`
+     * (0: the runway start bees swoop in from, 1: the first cell outside the grid).
+     */
+    private anchorTo(bee: Bee, at = 0): RouteAnchor {
         const a = this.anchor, world = this.sculpture.node.worldMatrix;
-        bee.path.pointWorld(0, world, a.gate);
-        Vec3.subtract(a.exit, a.gate, bee.path.pointWorld(1, world, this.tmp)).normalize();
+        bee.path.pointWorld(at, world, a.gate);
+        Vec3.subtract(a.exit, a.gate, bee.path.pointWorld(at + 1, world, this.tmp)).normalize();
         return a;
     }
 

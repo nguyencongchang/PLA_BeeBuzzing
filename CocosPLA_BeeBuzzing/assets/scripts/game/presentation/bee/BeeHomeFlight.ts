@@ -14,6 +14,9 @@ const CUBE_HANG = 0.14;
 const BEE_SPAN = 0.32;
 const HOLE_FILL = 0.85;
 const MIN_ENTRY_SCALE = 0.35;
+/** Level hops tried when the gate cannot see the hive directly: lengths (world units) and directions. */
+const FORWARD_HOPS = [0.6, 1.2, 2, 3];
+const HOP_DIRECTIONS = [new Vec3(0, 0, 1), new Vec3(-0.7, 0, 0.7), new Vec3(0.7, 0, 0.7), new Vec3(-1, 0, 0), new Vec3(1, 0, 0)];
 /** A climb over the model must stay this far below the hole, or it would pass behind the hive. */
 const UNDER_HIVE = 0.3;
 
@@ -30,9 +33,10 @@ type Entrance = (out: Vec3, planeZ?: number, across?: number) => Vec3;
  * Sets up the flight home from the gate, built from the sculpture's free zones (see
  * SculptureClearance). The hive is 2D, so the bee may enter it at any depth along the camera ray
  * through the hole: it does so in the free zone in front of the model, which leaves room for a
- * straight rise into the hole on any screen. Route: out through the gate's door, (from a side door:
- * around the model to the front, over it or under it — never behind the hive), to below the hole,
- * straight up into it.
+ * straight rise into the hole on any screen. Route: straight from the gate to below the hole when
+ * that line clears the cubes (as in the reference), else a level hop towards the camera and then
+ * straight there (no dip below the gate); only when neither clears, out through the gate's door, (from a side door: around the model to the front, over it or under it — never behind the
+ * hive), to below the hole. Then straight up into it.
  */
 export function startHomeFlight(bee: Bee, anchor: RouteAnchor, entrance: Entrance): void {
     const c = anchor.clearance, route = bee.home, pts = bee.homePoints;
@@ -42,7 +46,14 @@ export function startHomeFlight(bee: Bee, anchor: RouteAnchor, entrance: Entranc
     const hole = frontEntrance(c, entrance, pts[4]);
     const below = pts[3].set(hole.x, hole.y - ENTRY_RISE, hole.z);
     const inside = pts[5].set(hole.x, hole.y + ENTER_DEPTH, hole.z);
-    route.push(gate, door);
+    route.push(gate);
+    if (anchor.isClear(gate, below) || forwardHop(anchor, gate, below, pts[2], route)) {
+        route.push(below, hole, inside);
+        bee.s = walkRounded(route, Number.POSITIVE_INFINITY, null);
+        fitEntry(bee, entrance, hole);
+        return;
+    }
+    route.push(door);
     if (Vec3.dot(side, c.front) < 0.999) {
         // A side door: round the model to the front, over its top when that stays below the hole.
         const over = Math.max(c.aboveLevel + 2 * CUBE_HANG, c.along(below), c.along(door));
@@ -51,6 +62,28 @@ export function startHomeFlight(bee: Bee, anchor: RouteAnchor, entrance: Entranc
     }
     route.push(below, hole, inside);
     bee.s = walkRounded(route, Number.POSITIVE_INFINITY, null);
+    fitEntry(bee, entrance, hole);
+}
+
+/**
+ * Adds the shortest level hop from the gate (towards the camera first, then diagonally, then
+ * sideways) after which `below` is in clear view.
+ */
+function forwardHop(anchor: RouteAnchor, gate: Vec3, below: Vec3, hop: Vec3, route: Vec3[]): boolean {
+    for (const distance of FORWARD_HOPS) {
+        for (const direction of HOP_DIRECTIONS) {
+            Vec3.scaleAndAdd(hop, gate, direction, distance);
+            if (anchor.isClear(gate, hop) && anchor.isClear(hop, below)) {
+                route.push(hop);
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+/** Bee scale at the hole so bee + wings take HOLE_FILL of its width there. */
+function fitEntry(bee: Bee, entrance: Entrance, hole: Vec3): void {
     entrance(rimL, hole.z, -1);
     entrance(rimR, hole.z, 1);
     bee.entryScale = math.clamp(HOLE_FILL * Vec3.distance(rimL, rimR) / BEE_SPAN, MIN_ENTRY_SCALE, 1);

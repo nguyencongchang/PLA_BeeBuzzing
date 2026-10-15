@@ -59,6 +59,11 @@ export class BeeFlightPath {
         return Vec3.transformMat4(out, out, world);
     }
 
+    /** World distance from the path start to vertex `i`. */
+    cumulativeWorld(i: number): number {
+        return this.cumulative[i] * this.unitScale;
+    }
+
     /**
      * World distance of the first path vertex at or beyond `worldS`: the end (towards the path's
      * end) of the straight leg that contains `worldS`.
