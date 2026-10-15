@@ -1,6 +1,6 @@
 export class Constant {
     static SRORE_LINK = {
-        ANDROID_LINK: 'https://play.google.com/',
+        ANDROID_LINK: 'https://play.google.com/store/apps/details?id=com.artoon.bee.buzz.pixel.puzzle',
         IOS_LINK: 'https://apps.apple.com/',
     }
 
