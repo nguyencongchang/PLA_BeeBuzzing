@@ -139,6 +139,8 @@ export class ReachabilitySolver {
     /**
      * Escape route of a reachable cube as flat grid coordinates
      * [x0,y0,z0, x1,y1,z1, ...]: target, every corner, then the first cell outside the grid.
+     * Uses the fewest turns the cube needs, each taken as early as possible (the shortest such route
+     * hugs the model instead of detouring through the grid's empty margins).
      * Returns false if the cube is not reachable.
      */
     tracePath(i: number, out: number[]): boolean {
@@ -159,20 +161,22 @@ export class ReachabilitySolver {
                 return true;
             }
             const q = g.index(x, y, z);
-            if (this.cost[q * DIR_COUNT + dir] <= budget) continue;
-
-            let turned = false;
+            // Turn at the first cell where a turn still escapes within the budget (fewest turns left
+            // after it first): going on straight could run to the far edge of the grid's empty space
+            // before turning, a long detour away from the model.
+            let turn = -1;
             for (let d = 0; d < DIR_COUNT; d++) {
                 if ((d >> 1) === (dir >> 1)) continue;
-                if (this.cost[q * DIR_COUNT + d] + 1 <= budget) {
-                    out.push(x, y, z);
-                    dir = d;
-                    budget--;
-                    turned = true;
-                    break;
-                }
+                const c = this.cost[q * DIR_COUNT + d];
+                if (c + 1 <= budget && (turn === -1 || c < this.cost[q * DIR_COUNT + turn])) turn = d;
             }
-            if (!turned) throw new Error('[ReachabilitySolver] inconsistent cost field while tracing');
+            if (turn !== -1) {
+                out.push(x, y, z);
+                dir = turn;
+                budget--;
+                continue;
+            }
+            if (this.cost[q * DIR_COUNT + dir] > budget) throw new Error('[ReachabilitySolver] inconsistent cost field while tracing');
         }
         throw new Error('[ReachabilitySolver] path trace exceeded grid size');
     }

@@ -4,6 +4,7 @@ import { VoxelGrid } from '../../domain/VoxelGrid';
 import { ModelKit } from '../rendering/ModelKit';
 import { SculptureView } from '../sculpture/SculptureView';
 import { buildApproachPath } from './BeeFlightPath';
+import { corridorMouth } from './CorridorMouth';
 import { startHomeFlight, stepHomeFlight } from './BeeHomeFlight';
 import { Bee, BeePool, clingBee, poseBee } from './BeePool';
 import { tumble } from './BeeEffects';
@@ -23,6 +24,8 @@ const PERCH_TIME = 0.8;
 const PERCH_WIGGLE = 0.02;
 /** A readable pull gives the socket-to-cube light trail time to bloom. */
 const PULL_TIME = 0.22;
+/** A cube buried down a corridor slides out to the bee waiting at its mouth this much faster than bees fly. */
+const CORRIDOR_PULL_SPEEDUP = 1.6;
 /** Bees pop out of the hive small and reach full size after this distance (world units). */
 const EMERGE_DISTANCE = 0.45;
 const EMERGE_MIN_SCALE = 0.3;
@@ -69,6 +72,7 @@ export class BeeSwarm extends Component {
     beeSpeed = MAX_BEE_FLIGHT_SPEED;
 
     private sculpture: SculptureView = null!;
+    private grid: VoxelGrid = null!;
     private pool: BeePool = null!;
     private readonly active: Bee[] = [];
     private pending = 0;
@@ -76,11 +80,14 @@ export class BeeSwarm extends Component {
     private anchor: RouteAnchor & { gate: Vec3; exit: Vec3 } = null!;
     private readonly pos = new Vec3();
     private readonly tmp = new Vec3();
+    /** Far end of a carried cube's speed lines (never the bee's own position buffer). */
+    private readonly tail = new Vec3();
     /** Bees launched so far per hive position (sweeps and loops interleave per hive). */
     private readonly launchCounts = new Map<string, number>();
 
     init(kit: ModelKit, sculpture: SculptureView, grid: VoxelGrid): void {
         this.sculpture = sculpture;
+        this.grid = grid;
         const clearance = new SculptureClearance(sculpture.node, grid, sculpture.gridSpace);
         const segments = new SculptureSegmentCheck(sculpture.node, grid, sculpture.gridSpace);
         this.anchor = { gate: new Vec3(), exit: new Vec3(), clearance, isClear: (a, b) => segments.isClear(a, b) };
@@ -102,6 +109,11 @@ export class BeeSwarm extends Component {
         const bee = this.pool.acquireBee(req.color);
         buildApproachPath(bee.path, req.gridPath, this.sculpture.gridSpace, EXIT_RUNWAY_CELLS, FACE_HOVER_CELLS, bee.center, bee.faceDir);
         bee.path.unitScale = this.sculpture.node.worldScale.x;
+        // A cube down a tight corridor: the bee waits at its mouth instead of squeezing into the model.
+        const mouth = corridorMouth(req.gridPath, this.grid, bee.holdDir);
+        const cellW = this.sculpture.gridSpace.cellSize * bee.path.unitScale;
+        bee.mouthS = mouth > 0 ? bee.path.length - (mouth - FACE_HOVER_CELLS) * cellW : bee.path.length;
+        if (mouth === 0) bee.holdDir.set(bee.faceDir);
         bee.target = req.target;
         bee.phase = APPROACH;
         bee.s = bee.timer = 0;
@@ -150,11 +162,12 @@ export class BeeSwarm extends Component {
                 } else {
                     bee.path.sampleWorld(bee.s - bee.leadLength, world, this.pos);
                 }
-                if (bee.s >= bee.leadLength + bee.path.length) this.enter(bee, GRAB);
+                if (bee.s >= bee.leadLength + bee.mouthS) this.enter(bee, GRAB);
                 break;
             }
-            case GRAB: { // clinging on the cube face, wiggling, then pulls
-                this.localToWorld(bee.center, bee.faceDir, CLING_CELLS * cell, this.pos);
+            case GRAB: { // clinging on the cube face (or the corridor mouth), wiggling, then pulls
+                if (this.atMouth(bee)) bee.path.sampleWorld(bee.mouthS, world, this.pos);
+                else this.localToWorld(bee.center, bee.faceDir, CLING_CELLS * cell, this.pos);
                 this.pos.x += Math.sin(bee.timer * 40) * PERCH_WIGGLE;
                 const punch = 1 + 0.3 * Math.sin(Math.min(1, bee.timer / 0.1) * Math.PI);
                 bee.parts.root.setScale(punch, punch, punch);
@@ -168,6 +181,13 @@ export class BeeSwarm extends Component {
                 break;
             }
             case PULL: {
+                if (this.atMouth(bee)) {
+                    if (this.pullThroughCorridor(bee, speed, cell)) {
+                        bee.s = bee.mouthS;
+                        this.enter(bee, CARRY);
+                    }
+                    break;
+                }
                 const t = math.clamp01(bee.timer / PULL_TIME);
                 const pullDistance = FACE_HOVER_CELLS * cell * t;
                 this.localToWorld(bee.center, bee.faceDir, pullDistance, this.tmp);
@@ -207,11 +227,39 @@ export class BeeSwarm extends Component {
         }
 
         if (bee.phase === GRAB || bee.phase === PULL) {
-            clingBee(bee, this.pos, Vec3.transformQuat(this.tmp, bee.faceDir, this.sculpture.node.worldRotation), dt);
+            clingBee(bee, this.pos, Vec3.transformQuat(this.tmp, bee.holdDir, this.sculpture.node.worldRotation), dt);
         } else {
             poseBee(bee, this.pos, dt);
         }
         return false;
+    }
+
+    /** The bee holds on at a corridor mouth rather than on the cube face. */
+    private atMouth(bee: Bee): boolean {
+        return bee.mouthS < bee.path.length;
+    }
+
+    /**
+     * The cube slides out of its socket and along the corridor to the bee waiting at the mouth,
+     * stopping where the carry picks it up; returns true once it is there.
+     */
+    private pullThroughCorridor(bee: Bee, speed: number, cell: number): boolean {
+        const path = bee.path, world = this.sculpture.node.worldMatrix, cellW = cell * path.unitScale;
+        const hoverW = FACE_HOVER_CELLS * cellW;
+        const total = hoverW + path.length - bee.mouthS - CUBE_TRAIL_CELLS * cellW;
+        const u = Math.min(bee.timer * speed * CORRIDOR_PULL_SPEEDUP, total);
+        if (u < hoverW) { // still leaving the socket, straight out of the face
+            this.localToWorld(bee.center, bee.faceDir, u / path.unitScale, this.tmp);
+            this.localToWorld(bee.center, bee.faceDir, Math.max(0, u / path.unitScale - TRAIL_CELLS * cell), this.pos);
+            bee.streak.draw(this.tmp, this.pos, cellW, 1);
+        } else {
+            const cubeS = path.length - (u - hoverW);
+            path.sampleWorld(cubeS, world, this.tmp);
+            this.drawCarryTrail(bee, cubeS, cubeS - path.cumulativeWorld(1), cell);
+        }
+        bee.cube!.setWorldPosition(this.tmp);
+        path.sampleWorld(bee.mouthS, world, this.pos);
+        return u >= total;
     }
 
     private enter(bee: Bee, phase: number): void {
@@ -231,13 +279,13 @@ export class BeeSwarm extends Component {
         const wanted = cubeS + TRAIL_CELLS * cellW;
         const legEnd = path.legEnd(cubeS);
         if (legEnd < path.length || wanted <= path.length) {
-            path.sampleWorld(Math.min(wanted, legEnd), this.sculpture.node.worldMatrix, this.pos);
+            path.sampleWorld(Math.min(wanted, legEnd), this.sculpture.node.worldMatrix, this.tail);
         } else {
             const intoSocket = Math.min((wanted - path.length) / path.unitScale, FACE_HOVER_CELLS * cell);
-            this.localToWorld(bee.center, bee.faceDir, FACE_HOVER_CELLS * cell - intoSocket, this.pos);
+            this.localToWorld(bee.center, bee.faceDir, FACE_HOVER_CELLS * cell - intoSocket, this.tail);
         }
         const fade = math.clamp01((toEnd / cellW - TRAIL_END_CELLS) / TRAIL_FADE_CELLS);
-        bee.streak.draw(this.tmp, this.pos, cellW, fade);
+        bee.streak.draw(this.tmp, this.tail, cellW, fade);
     }
 
     /**

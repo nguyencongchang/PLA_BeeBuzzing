@@ -45,6 +45,20 @@ test('cube exposed only upward needs exactly one turn to reach the camera', () =
     assert.deepEqual(path, [1, 0, 1, 1, 1, 1, 1, 1, 3]);
 });
 
+test('the traced route turns at the first chance instead of running to the grid edge', () => {
+    // 3x6x3 grid, camera +Z: target (1,0,1) inside a ring on its layer; a 1-cell wall at (1,1,2)
+    // shields the cell above it, so the route goes up and turns toward the camera one cell higher —
+    // not at the top of the (empty) grid.
+    const filled: number[][] = [[1, 1, 2, 0]];
+    for (let z = 0; z < 3; z++) for (let x = 0; x < 3; x++) filled.push([x, 0, z, 0]);
+    const g = makeGrid(3, 6, 3, filled);
+    const s = new ReachabilitySolver(g, 1);
+    s.solve(PLUS_Z);
+    const path: number[] = [];
+    assert.ok(s.tracePath(g.index(1, 0, 1), path));
+    assert.deepEqual(path, [1, 0, 1, 1, 2, 1, 1, 2, 3]);
+});
+
 test('leaving the grid in a non camera-facing direction is a dead end', () => {
     // Single cube; camera only +Y, but every face may exit. Only the +Y face counts.
     const g = makeGrid(1, 1, 1, [[0, 0, 0, 0]]);
