@@ -45,7 +45,7 @@ test('TargetSelector: within the front face, highest then right-most', () => {
     assert.equal(selector.next(9, reserved), -1);
 });
 
-test('TargetSelector: the face closest to the camera beats a higher cube further back', () => {
+test('TargetSelector: a higher cube beats one closer to the camera (highest first)', () => {
     // Two cubes reachable from any side: (1,2,0) is high but at the back, (1,0,2) low but in front.
     const g = makeGrid(3, 3, 3, [[1, 2, 0, 4], [1, 0, 2, 4]]);
     const solver = new ReachabilitySolver(g, 0);
@@ -53,7 +53,24 @@ test('TargetSelector: the face closest to the camera beats a higher cube further
     const selector = new TargetSelector(g, solver);
     selector.rebuild(IDENTITY_VIEW); // row 3 = toward camera = +Z
     const first = selector.next(4, new Uint8Array(g.cellCount));
-    assert.deepEqual([g.xs[first], g.ys[first], g.zs[first]], [1, 0, 2]);
+    assert.deepEqual([g.xs[first], g.ys[first], g.zs[first]], [1, 2, 0]);
+});
+
+test('TargetSelector: at the same height the cube closer to the camera wins, then right-most', () => {
+    // Same row y=1: (0,1,0) at the back, (0,1,2) in front, (2,1,2) in front and further right.
+    const g = makeGrid(3, 3, 3, [[0, 1, 0, 4], [0, 1, 2, 4], [2, 1, 2, 4]]);
+    const solver = new ReachabilitySolver(g, 0);
+    solver.solve(0b111111);
+    const selector = new TargetSelector(g, solver);
+    selector.rebuild(IDENTITY_VIEW);
+    const reserved = new Uint8Array(g.cellCount);
+    const order: number[][] = [];
+    for (let k = 0; k < 3; k++) {
+        const i = selector.next(4, reserved);
+        order.push([g.xs[i], g.ys[i], g.zs[i]]);
+        reserved[i] = 1;
+    }
+    assert.deepEqual(order, [[2, 1, 2], [0, 1, 2], [0, 1, 0]]);
 });
 
 test('GameRules: win, lose only on a true deadlock', () => {

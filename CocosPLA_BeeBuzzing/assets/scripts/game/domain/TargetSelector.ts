@@ -8,9 +8,9 @@ const TIER_RANGE = 256;
 /**
  * Picks which cube a hive shoots next.
  *
- * Among reachable, unreserved cubes of the hive's color the priority is:
- * closest to the camera → highest on screen → right-most, each measured in whole
- * cells, so bees peel the face the player is looking at, layer by layer.
+ * Among reachable, unreserved cubes of the hive's color the priority is (brief):
+ * highest on screen → closest to the camera → right-most, each measured in whole
+ * cells, so the model is taken apart in an orderly, natural-looking way.
  *
  * `view` is a row-major 3x3 matrix mapping a grid offset (from the grid center, in
  * cells) to view space rows: [right, up, toward-camera].
@@ -45,7 +45,7 @@ export class TargetSelector {
             const right = Math.round(view[0] * dx + view[1] * dy + view[2] * dz) + TIER_OFFSET;
             const up = Math.round(view[3] * dx + view[4] * dy + view[5] * dz) + TIER_OFFSET;
             const toward = Math.round(view[6] * dx + view[7] * dy + view[8] * dz) + TIER_OFFSET;
-            this.keys[i] = (toward * TIER_RANGE + up) * TIER_RANGE + right;
+            this.keys[i] = (up * TIER_RANGE + toward) * TIER_RANGE + right;
 
             const color = g.colorAt(i);
             let list = this.lists.get(color);
