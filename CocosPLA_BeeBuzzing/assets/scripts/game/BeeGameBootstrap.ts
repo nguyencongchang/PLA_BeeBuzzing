@@ -1,5 +1,4 @@
-import { _decorator, Camera, Component, Director, director, Layers, math, Node, Scene, UITransform, view } from 'cc';
-import { EDITOR } from 'cc/env';
+import { _decorator, Camera, Component, director, Layers, math, Node, UITransform, view } from 'cc';
 import { SignalBus } from 'db://assets/PLAGameFoundation/signalBus/SignalBus';
 import { GameView } from 'db://assets/scripts/UI/GameView';
 import { BeeAssets, loadBeeAssets } from './infrastructure/BeeAssetLoader';
@@ -26,7 +25,7 @@ import { HiveNest } from './presentation/hud/HiveNest';
 import { ensureKeyLight, hideTemplateHud } from './presentation/SceneSetup';
 import { GameAudio } from './presentation/hud/GameAudio';
 
-const { ccclass } = _decorator;
+const { ccclass, property } = _decorator;
 
 /** Matches PlayableConfig.MainCamera's default position. */
 const DEFAULT_CAMERA_Z = 16;
@@ -43,11 +42,22 @@ function createChild(parent: Node, name: string, layer = Layers.Enum.DEFAULT): N
 /**
  * Entry point of the Bee Cube level. Loads assets from `resources/bee`, builds the 3D
  * world, HUD and gameplay at runtime, and forwards the outcome to the template's GameView.
- * Auto-attached to the launched scene (see bottom of file) unless the scene already has one.
+ * Lives on the `BeeGame` node of MainScene; the scene nodes it builds on are wired in the Inspector.
  */
 @ccclass('BeeGameBootstrap')
 export class BeeGameBootstrap extends Component {
-    private camera: Camera = null!;
+    @property({ type: Camera, tooltip: '3D gameplay camera (MainCamera parameter drives its pose)' })
+    camera: Camera = null!;
+
+    @property({ type: Node, tooltip: 'UI canvas: HUD, hive labels and the intro are added under it' })
+    uiCanvas: Node = null!;
+
+    @property({ type: Node, tooltip: 'Background canvas: the bee backdrop is added under it' })
+    bgCanvas: Node = null!;
+
+    @property({ type: Node, tooltip: 'Template background sprite, hidden when the bee backdrop loads' })
+    templateBackground: Node | null = null;
+
     private world: Node = null!;
     private controller: GameplayController | null = null;
     /** Gameplay waits for the intro (sculpture assembly) to finish. */
@@ -96,11 +106,9 @@ export class BeeGameBootstrap extends Component {
     private build({ level, effect, toonEffect, bee, hive, cube, font, backdrop, hand }: BeeAssets): void {
         const config = gameplayConfig;
         const scene = director.getScene()!;
-        const cameraNode = scene.getChildByName('Camera3D');
-        const uiCanvas = scene.getChildByName('UICanvas');
-        const bgCanvas = scene.getChildByName('BGCanvas');
-        if (!cameraNode?.getComponent(Camera) || !uiCanvas) throw new Error('[BeeGame] scene needs Camera3D and UICanvas');
-        this.camera = cameraNode.getComponent(Camera)!;
+        const { camera, uiCanvas, bgCanvas } = this;
+        if (!camera || !uiCanvas || !bgCanvas) throw new Error('[BeeGame] BeeGameBootstrap: assign camera, uiCanvas and bgCanvas in the Inspector');
+        const cameraNode = camera.node;
         // Parameters may not have applied the camera pose yet; start from the default one.
         if (cameraNode.worldPosition.z < 1) cameraNode.setWorldPosition(0, 0, DEFAULT_CAMERA_Z);
 
@@ -151,10 +159,9 @@ export class BeeGameBootstrap extends Component {
         // After the loading screen: intro (sculpture assembles) → first-time tutorial → idle hints.
         const intro = new IntroSequence({ grid, board, materials, sculpture, camera: this.camera, worldRoot: this.world, uiCanvas, hand, font });
         this.pendingIntro = () => intro.play().then(() => { this.introDone = true; });
-        if (backdrop && bgCanvas) {
+        if (backdrop) {
             const bgCamera = bgCanvas.getComponentInChildren(Camera);
-            const templateBg = bgCanvas.getChildByName('BG');
-            if (templateBg) templateBg.active = false;
+            if (this.templateBackground) this.templateBackground.active = false;
             const view = createChild(bgCanvas, 'BeeBackdrop', bgCanvas.layer).addComponent(BoardBackdrop);
             view.init(this.camera, this.world, bgCamera, backdrop, board.slotCount, board.lineCount);
             const fallback = swarm.hiveEntrance;
@@ -198,12 +205,4 @@ export class BeeGameBootstrap extends Component {
         if (signal.outcome === 'win') gameView.onWin();
         else if (signal.outcome === 'lose') gameView.onLose();
     };
-}
-
-// Auto-attach: the gameplay boots without hand-wiring the scene in the editor.
-if (!EDITOR) {
-    director.on(Director.EVENT_AFTER_SCENE_LAUNCH, (scene: Scene) => {
-        if (scene.getComponentInChildren(BeeGameBootstrap)) return;
-        createChild(scene, 'BeeGame').addComponent(BeeGameBootstrap);
-    });
 }

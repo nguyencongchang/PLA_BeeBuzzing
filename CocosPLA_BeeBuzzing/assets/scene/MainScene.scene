@@ -36,6 +36,9 @@
       },
       {
         "__id__": 107
+      },
+      {
+        "__id__": 157
       }
     ],
     "_active": true,
@@ -2804,5 +2807,74 @@
   {
     "__type__": "cc.PostSettingsInfo",
     "_toneMappingType": 0
+  },
+  {
+    "__type__": "cc.Node",
+    "_name": "BeeGame",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "_parent": {
+      "__id__": 1
+    },
+    "_children": [],
+    "_active": true,
+    "_components": [
+      {
+        "__id__": 158
+      }
+    ],
+    "_prefab": null,
+    "_lpos": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_lrot": {
+      "__type__": "cc.Quat",
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "w": 1
+    },
+    "_lscale": {
+      "__type__": "cc.Vec3",
+      "x": 1,
+      "y": 1,
+      "z": 1
+    },
+    "_mobility": 0,
+    "_layer": 1073741824,
+    "_euler": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_id": "AiiSHzZFlU06OvyH88DmGB"
+  },
+  {
+    "__type__": "16bf1oHzWxL5ZbOwya59TvH",
+    "_name": "",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "node": {
+      "__id__": 157
+    },
+    "_enabled": true,
+    "__prefab": null,
+    "camera": {
+      "__id__": 21
+    },
+    "uiCanvas": {
+      "__id__": 23
+    },
+    "bgCanvas": {
+      "__id__": 9
+    },
+    "templateBackground": {
+      "__id__": 12
+    },
+    "_id": "VvcYk0ePUp5MB0kRM4sCz8"
   }
 ]
